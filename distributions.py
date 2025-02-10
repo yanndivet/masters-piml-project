@@ -42,7 +42,7 @@ def log_likelihood_distribution_n_systems(z, y):
     batch_observations = vmap(data_generation.noisy_observations, in_axes=(0, 0, None))(
         z,
         keys,
-        cs.OBSERVATION_NOISE
+        0.0
     )
     
     return -jnp.sum(norm.logpdf(y.reshape(-1), 
@@ -61,3 +61,18 @@ def log_posterior_distribution(all_parameters, y, number_systems):
     log_likelihood = log_likelihood_distribution_n_systems(z, y)
     
     return log_hyperprior + log_population + log_likelihood
+
+# @partial(jit, static_argnums=2) 
+# def log_posterior_distribution(all_parameters, y, number_systems):
+#     mu = all_parameters[:2]
+#     tau = all_parameters[2:4]
+#     z_raw = all_parameters[4:].reshape(number_systems, 2)
+    
+#     # Non-centered parameterization for lognormal
+#     z = jnp.exp(mu + tau * z_raw)  # z_raw ~ N(0,1) 
+    
+#     log_hyperprior = log_hyperprior_distribution(mu, tau)
+#     log_population = -0.5 * jnp.sum(z_raw**2)  # Standard normal prior for z_raw
+#     log_likelihood = log_likelihood_distribution_n_systems(z, y)
+    
+#     return log_hyperprior + log_population + log_likelihood

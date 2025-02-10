@@ -96,12 +96,12 @@ def create_visualization(df_results, df_runtime, target_hyperparameters, pic_nam
     fig_runtime.tight_layout()
     
     # Save both figures with high resolution
-    fig_hyper.savefig(f'hyperparameter_convergence_{pic_name}.png', dpi=300, bbox_inches='tight')
-    fig_runtime.savefig(f'runtime_performance_{pic_name}.png', dpi=300, bbox_inches='tight')
+    fig_hyper.savefig(f'simulation_results/new_true_values/hyperparameter_convergence_{pic_name}.png', dpi=300, bbox_inches='tight')
+    fig_runtime.savefig(f'simulation_results/new_true_values/runtime_performance_{pic_name}.png', dpi=300, bbox_inches='tight')
     
     # Display the plots
     plt.show()
 
-df_mcmc_results = pl.read_parquet("simulation_results/new_data_gen/mcmc_results_N=*.parquet").sort(pl.col("number of systems"))
-df_mcmc_runtime = pl.read_parquet("simulation_results/new_data_gen/mcmc_times_N=*.parquet").sort(pl.col("number of systems"))
-create_visualization(df_mcmc_results, df_mcmc_runtime, cs.TARGET_HYPERPARAMETERS, "new")
+df_mcmc_results = pl.read_parquet("simulation_results/new_true_values/mcmc_results_N=*.parquet").sort(pl.col("number of systems"))
+df_mcmc_runtime = pl.read_parquet("simulation_results/new_true_values/mcmc_times_N=*.parquet").sort(pl.col("number of systems"))
+create_visualization(df_mcmc_results, df_mcmc_runtime, cs.TARGET_HYPERPARAMETERS, "new_true_vals_summary")
