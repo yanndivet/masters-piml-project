@@ -1,0 +1,35 @@
+# .NET
+bin/
+obj/
+*.dll
+*.exe
+
+# Data files
+*.parquet
+simulation_results/
+
+# Conda
+miniconda3/
+Miniconda3-latest-Linux-x86_64.sh
+
+# Python files & cache
+__pycache__/
+*.pyc
+.cache/
+.conda/
+.config/
+.ipython/
+.jupyter/
+.local/
+.nv/
+.ssh/
+.vscode-server/
+
+# System files
+.bash_history
+.bash_logout
+.bashrc
+.condarc
+.profile
+.dotnet/
+wget-hsts
