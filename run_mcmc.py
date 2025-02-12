@@ -88,15 +88,15 @@ def parse_mcmc_summary(mcmc: MCMC, number_systems):
     return df_mcmc_results_per_system
 
 def run_mcmc(number_systems=cs.N_SYSTEMS):
-    key = random.key(101)
-    key_sample_params, key_mcmc = random.split(key, 2)
+    key = random.key(number_systems) # test number systems instead
+    key_sample_params, key_obs_gen, key_mcmc = random.split(key, 3)
     sampled_params = sd.sample_lognormal(key_sample_params, mu=cs.MU_TARGET, tau=cs.TAU_TARGET, m=number_systems)
     sampled_params_concat = jnp.concatenate(sampled_params)
-    target_observations_from_sampled_params = data_gen.generate_observations(sampled_params, cs.OBSERVATION_NOISE)
+    target_observations_from_sampled_params = data_gen.generate_observations(sampled_params, key_obs_gen, cs.OBSERVATION_NOISE)
 
     initial_parameters = jnp.concatenate([cs.INITIAL_HYPERPARAMETERS, sampled_params_concat])
     initial_parameters_tiled = jnp.tile(initial_parameters, (cs.N_CHAINS, 1))
-    noisy_initial_parameters_tiled = initial_parameters_tiled # + random.normal(random.key(42), initial_parameters_tiled.shape) * 1e-4
+    noisy_initial_parameters_tiled = initial_parameters_tiled # add noise?
 
     target_distribution = lambda params: dist.log_posterior_distribution(
         params, 
@@ -104,12 +104,6 @@ def run_mcmc(number_systems=cs.N_SYSTEMS):
         number_systems
     )
 
-    # kernel = NUTS(potential_fn=target_distribution,
-    #          step_size=1e-3,  # Start larger, let it adapt
-    #          adapt_step_size=True,  # Enable step size adaptation
-    #          target_accept_prob=0.8,
-    #          adapt_mass_matrix=True,
-    #          dense_mass=True)
     kernel = NUTS(potential_fn=target_distribution,
              step_size=1e-4,  # Try smaller step size
              adapt_step_size=True,
@@ -140,8 +134,7 @@ def run_mcmc(number_systems=cs.N_SYSTEMS):
     df_mcmc_results_per_N = parse_mcmc_summary(mcmc, number_systems)
     return df_mcmc_results_per_N, df_mcmc_time_per_N
 
-N_values = [1, 5, 10, 50, 100, 500, 1000]
-for N in N_values:
+for N in cs.N_VALUES:
     df_mcmc_results_per_N, df_mcmc_time_per_N = run_mcmc(N)
     df_mcmc_results_per_N.write_parquet(f"simulation_results/new_true_values/mcmc_results_N={N}.parquet")
     df_mcmc_time_per_N.write_parquet(f"simulation_results/new_true_values/mcmc_times_N={N}.parquet")

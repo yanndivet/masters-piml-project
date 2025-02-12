@@ -1,6 +1,7 @@
 import jax.numpy as jnp
 
 N_SYSTEMS = 4 # Number of systems. If N = 1, Classical Bayesian inference. 
+N_VALUES = [1, 5, 10, 50, 100, 500, 1000]
 
 OBSERVATION_NOISE = 1e-2
 # OBSERVATION_LENGTH 
@@ -13,13 +14,16 @@ T = 5
 U_0 = 0.0
 V_0 = 1.0
 
-LEARNING_RATE = .1 # 3e-4
-LAMBDA_REG = 0.1
+LEARNING_RATE = 5e-3
+LAMBDA_REG = 0.5
+EPSILON = 1e-9
 
 CURRENT_ITERATION = 0
 
-# Calculate MAP values
 def calculate_map(a, b):
+    '''
+    Calculate Maxmimum A Posteriori values
+    '''
     return b / (a + 1)
 
 # Define hyperprior constants
