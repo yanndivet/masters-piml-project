@@ -50,9 +50,12 @@ import numpy as np
 #     plt.savefig(f'simulation_results/mcmc_results/mcmc_chains_N={number_systems}.png', dpi=300, bbox_inches='tight')
 #     plt.close()
 
-def plot_mcmc_chains(posterior_samples, warmup_samples, number_systems):
+def plot_mcmc_chains(posterior_samples, warmup_samples, number_systems, folder_name):
     import matplotlib.pyplot as plt
     import numpy as np
+    
+    # Define parameter names using LaTeX notation
+    HYPERPARAMETER_NAMES = [r'$\mu_\omega$', r'$\mu_\gamma$', r'$\tau_\omega$', r'$\tau_\gamma$']
     
     # Reshape samples to (n_samples, n_params)
     posterior_reshaped = posterior_samples.squeeze()
@@ -61,7 +64,9 @@ def plot_mcmc_chains(posterior_samples, warmup_samples, number_systems):
     # Create subplots for first few parameters
     n_params_to_plot = min(4, posterior_reshaped.shape[1])
     fig, axes = plt.subplots(n_params_to_plot, 1, figsize=(12, 3*n_params_to_plot))
-    fig.suptitle(f'MCMC Chain Traces (including warmup) for N = {number_systems}')
+    
+    # Use LaTeX for the title
+    fig.suptitle(f'MCMC Chain Traces (including warmup) for $N = {number_systems}$')
     
     # Plot each parameter
     for i in range(n_params_to_plot):
@@ -87,9 +92,8 @@ def plot_mcmc_chains(posterior_samples, warmup_samples, number_systems):
         axes[i].axvline(x=len(warmup_param), color='k', linestyle=':', alpha=0.5,
                        label='End of Warmup')
         
-        # Customize plot
-        param_name = "Hyperparameter" if i < 4 else "Population parameter"
-        axes[i].set_title(f'{param_name} {i}')
+        # Customize plot with LaTeX parameter names
+        axes[i].set_title(HYPERPARAMETER_NAMES[i])
         axes[i].set_xlabel('Iteration')
         axes[i].set_ylabel('Value')
         axes[i].grid(True, linestyle='--', alpha=0.7)
@@ -98,8 +102,12 @@ def plot_mcmc_chains(posterior_samples, warmup_samples, number_systems):
         if i == 0:
             axes[i].legend(loc='upper right', fontsize='small')
     
+    # Enable LaTeX rendering
+    plt.rc('text', usetex=True)
+    plt.rc('font', family='serif')
+    
     plt.tight_layout()
-    plt.savefig(f'simulation_results/mcmc_results/mcmc_chains_N={number_systems}.png', 
+    plt.savefig(f'simulation_results/{folder_name}/mcmc_chains_N={number_systems}.png', 
                 dpi=300, bbox_inches='tight')
     plt.close()
 
@@ -138,7 +146,7 @@ def parse_mcmc_summary(mcmc: MCMC, number_systems):
 
     return df_mcmc_results_per_system
 
-def run_mcmc(number_systems=cs.N_SYSTEMS):
+def run_mcmc(number_systems=cs.N_SYSTEMS, folder_name="mcmc_results2"):
     key = random.key(number_systems) # test number systems instead
     key_sample_params, key_obs_gen, key_mcmc_warmup, key_mcmc_posterior = random.split(key, 4)
     sampled_params = sd.sample_lognormal(key_sample_params, mu=cs.MU_TARGET, tau=cs.TAU_TARGET, m=number_systems)
@@ -179,7 +187,7 @@ def run_mcmc(number_systems=cs.N_SYSTEMS):
     
     posterior_samples = mcmc.get_samples()
 
-    plot_mcmc_chains(posterior_samples, warmup_samples, number_systems)
+    plot_mcmc_chains(posterior_samples, warmup_samples, number_systems, folder_name)
 
     df_mcmc_time_per_N = pl.DataFrame({
         'number of systems': number_systems, 
@@ -190,10 +198,10 @@ def run_mcmc(number_systems=cs.N_SYSTEMS):
     df_mcmc_results_per_N = parse_mcmc_summary(mcmc, number_systems)
     return df_mcmc_results_per_N, df_mcmc_time_per_N
 
-# for N in cs.N_VALUES:
-#     df_mcmc_results_per_N, df_mcmc_time_per_N = run_mcmc(N)
-#     df_mcmc_results_per_N.write_parquet(f"simulation_results/mcmc_results/mcmc_results_N={N}.parquet")
-#     df_mcmc_time_per_N.write_parquet(f"simulation_results/mcmc_results/mcmc_times_N={N}.parquet")
+def run_full_mcmc(folder_name="mcmc_results_less_informative_prior"):
+    for N in cs.N_VALUES:
+        df_mcmc_results_per_N, df_mcmc_time_per_N = run_mcmc(N, folder_name)
+        df_mcmc_results_per_N.write_parquet(f"simulation_results/{folder_name}/mcmc_results_N={N}.parquet")
+        df_mcmc_time_per_N.write_parquet(f"simulation_results/{folder_name}/mcmc_times_N={N}.parquet")
 
-N = 7
-run_mcmc(N)
+run_full_mcmc()

@@ -9,13 +9,12 @@ OBSERVATION_NOISE = 1e-2
 N_CHAINS = 1
 
 SIGMA = 0.02
-N_SAMPLES = 200
+OBSERVATION_LENGTH = 200
 T = 5
 U_0 = 0.0
 V_0 = 1.0
 
 LEARNING_RATE = 5e-3
-LAMBDA_REG = 0.5
 EPSILON = 1e-6
 
 CURRENT_ITERATION = 0
@@ -28,14 +27,14 @@ def calculate_map(a, b):
 
 # Define hyperprior constants
 MU_PHI = jnp.array([2., 3.])
-SIGMA_PHI = jnp.array([.7, .8])
+SIGMA_PHI = jnp.array([1.2, 1.8])
 A_PHI = jnp.array([4.0, 4.5])
 B_PHI = jnp.array([4.8, 4.4])
 TAU_PHI_MAP = calculate_map(A_PHI, B_PHI)
 
 # Define target constants
-MU_TARGET = jnp.array([2., 3.])
-TAU_TARGET = TAU_PHI_MAP
+MU_TARGET = jnp.array([2.5, 3.5])
+TAU_TARGET = jnp.array([1.4, 1.2])
 
 # Define starting value constants
 MU_INITIAL = jnp.array([2.3, 3.2])

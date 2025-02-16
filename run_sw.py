@@ -50,14 +50,14 @@ def regularised_divergence(hyperparameters, key, target_observations, number_sys
     estimated_observations = data_gen.generate_observations(sampled_parameters, key_obs_gen, cs.OBSERVATION_NOISE)
     
     # Compute distance
-    # C = (cs.OBSERVATION_NOISE ** 2) * jnp.ones(cs.N_SAMPLES)
-    C = cs.OBSERVATION_NOISE * jnp.ones(cs.N_SAMPLES)
+    C = (cs.OBSERVATION_NOISE ** 2) * jnp.ones(cs.N_SAMPLES)
+    # C = cs.OBSERVATION_NOISE * jnp.ones(cs.N_SAMPLES)
     sw_distance = sliced_wasserstein_distance_CDiag(key_sw, estimated_observations, target_observations, C)
     
     # Compute regularisation term
     kl_divergence = kl_multivariate_gaussians(hyperparameters)
     
-    return sw_distance + cs.LAMBDA_REG * kl_divergence
+    return sw_distance + kl_divergence
 
 def run_sw(number_systems=cs.N_SYSTEMS):
     solver = optax.adam(learning_rate=cs.LEARNING_RATE)
