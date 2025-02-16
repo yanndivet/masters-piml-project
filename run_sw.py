@@ -15,17 +15,6 @@ import data_generation as data_gen
 from jx_pot import sliced_wasserstein_distance_CDiag
 import sampled_distributions as sd
 
-df_sw_time = pl.DataFrame(schema=[
-    ('number of systems', pl.UInt16),
-    ('sw run time', pl.Float64)
-])
-
-df_sw_results = pl.DataFrame(schema=[
-    ('number of systems', pl.Int32),
-    ('hyperparameter', pl.String),
-    ('estimate', pl.Float64), 
-])
-
 @jit
 def kl_multivariate_gaussians(parameter_estimate, initial_parameter=cs.INITIAL_HYPERPARAMETERS):
     """Calculate `KL(to||fr)`, where `to` and `fr` are pairs of means and covariance matrices
@@ -48,34 +37,27 @@ def kl_multivariate_gaussians(parameter_estimate, initial_parameter=cs.INITIAL_H
     term3 = d.T @ solve(d)
     return (term1 + term2 + term3 - len(d))/2
 
-@partial(jit, static_argnums=2) 
-def regularised_divergence(hyperparameters, target_observations, number_systems):
+@partial(jit, static_argnums=3) 
+def regularised_divergence(hyperparameters, key, target_observations, number_systems):
     """
     Compute objective using Sliced-Wasserstein distance with transformed parameters and a regularisation KL-divergence term
     """
-    try:
-        iteration += 1
-    except:
-        iteration = 0
-        
-    key = random.key(iteration)
-    key_sample_params, key_obs_gen = random.split(key, 2)
+    key, key_sample_params, key_obs_gen, key_sw = random.split(key, 4)
     mu_hyperparams, tau_hyperparams = hyperparameters[:2], hyperparameters[2:]
     sampled_parameters = sd.sample_lognormal(key_sample_params, mu=mu_hyperparams, tau=tau_hyperparams, m=number_systems)
     
     # Generate trajectories
-    y_estimate = data_gen.generate_observations(sampled_parameters, key_obs_gen, cs.OBSERVATION_NOISE)
-    y_estimates = jnp.tile(y_estimate, (number_systems, 1))
+    estimated_observations = data_gen.generate_observations(sampled_parameters, key_obs_gen, cs.OBSERVATION_NOISE)
     
     # Compute distance
-    C = (cs.OBSERVATION_NOISE ** 2) * jnp.ones(cs.N_SAMPLES)
-    sw_distance = sliced_wasserstein_distance_CDiag(random.key(iteration+1), y_estimates, target_observations, C)
+    # C = (cs.OBSERVATION_NOISE ** 2) * jnp.ones(cs.N_SAMPLES)
+    C = cs.OBSERVATION_NOISE * jnp.ones(cs.N_SAMPLES)
+    sw_distance = sliced_wasserstein_distance_CDiag(key_sw, estimated_observations, target_observations, C)
     
     # Compute regularisation term
     kl_divergence = kl_multivariate_gaussians(hyperparameters)
     
     return sw_distance + cs.LAMBDA_REG * kl_divergence
-
 
 def run_sw(number_systems=cs.N_SYSTEMS):
     solver = optax.adam(learning_rate=cs.LEARNING_RATE)
@@ -84,12 +66,12 @@ def run_sw(number_systems=cs.N_SYSTEMS):
     losses = []
 
     key_true_observations = random.key(number_systems)
-    key_sample_params_from_true_values, key_true_obs_gen = random.split(key_true_observations, 2)
+    key_sample_params_from_true_values, key_true_obs_gen, key_regularised_divergence = random.split(key_true_observations, 3)
     sampled_params = sd.sample_lognormal(key_sample_params_from_true_values, mu=cs.MU_TARGET, tau=cs.TAU_TARGET, m=number_systems)
     target_observations_from_sampled_params = data_gen.generate_observations(sampled_params, key_true_obs_gen, cs.OBSERVATION_NOISE)
 
-    def loss_fn(parameters, target_observations=target_observations_from_sampled_params, N=number_systems):
-        return regularised_divergence(parameters, target_observations, N)
+    def loss_fn(parameters):
+        return regularised_divergence(parameters, key_regularised_divergence, target_observations_from_sampled_params, number_systems)
     
     start_time = time()
     for iteration in range(4001):
@@ -97,12 +79,10 @@ def run_sw(number_systems=cs.N_SYSTEMS):
         updates, opt_state = solver.update(grad, opt_state, alpha)
         alpha = optax.apply_updates(alpha, updates)
         losses.append(loss_fn(alpha))
-        
-        if iteration % 100 == 0:
-            print(f'Loss function at step {iteration}: {loss_fn(alpha)}, with real parameters {alpha}')
 
         if len(losses) > 2:
             if abs(losses[-1] - losses[-2]) < cs.EPSILON:
+                print(f'Loss function at step {iteration}: {loss_fn(alpha)}, with real parameters {alpha}')
                 break 
     end_time = time()
 
@@ -113,7 +93,7 @@ def run_sw(number_systems=cs.N_SYSTEMS):
                 'sw run time': pl.Float64})
     
     df_sw_result_per_system = pl.DataFrame({
-        'number of systems': [N] * len(cs.HYPERPARAMETER_NAMES),
+        'number of systems': [number_systems] * len(cs.HYPERPARAMETER_NAMES),
         'hyperparameter': cs.HYPERPARAMETER_NAMES,
         'sw_estimate': alpha.tolist()}, 
         schema=[
@@ -122,7 +102,7 @@ def run_sw(number_systems=cs.N_SYSTEMS):
             ('sw_estimate', pl.Float64)]
     )
 
-    return df_sw_time_per_N, df_sw_result_per_system
+    return df_sw_result_per_system, df_sw_time_per_N,
 
 for N in cs.N_VALUES:
     df_sw_results_per_N, df_sw_time_per_N = run_sw(N)

@@ -16,7 +16,7 @@ V_0 = 1.0
 
 LEARNING_RATE = 5e-3
 LAMBDA_REG = 0.5
-EPSILON = 1e-9
+EPSILON = 1e-6
 
 CURRENT_ITERATION = 0
 
@@ -39,15 +39,15 @@ TAU_TARGET = TAU_PHI_MAP
 
 # Define starting value constants
 MU_INITIAL = jnp.array([2.3, 3.2])
-SIGMA_INITIAL = jnp.array([.65, 1.])
-A_INITIAL = jnp.array([4.2, 4.8])
-B_INITIAL = jnp.array([4.5, 4.6])
-TAU_INITIAL_MAP = calculate_map(A_INITIAL, B_INITIAL)
+# SIGMA_INITIAL = jnp.array([.65, 1.])
+# A_INITIAL = jnp.array([4.2, 4.8])
+# B_INITIAL = jnp.array([4.5, 4.6])
+# TAU_INITIAL_MAP = calculate_map(A_INITIAL, B_INITIAL)
+TAU_INITIAL_MAP = jnp.array([1.05, .7])
 
-# HYPERPRIORS = jnp.concatenate([MU_PHI, TAU_PHI_MAP])
 TARGET_HYPERPARAMETERS = jnp.concatenate([MU_TARGET, TAU_TARGET])
-# INITIAL_HYPERPARAMETERS = jnp.concatenate([MU_INITIAL, TAU_INITIAL_MAP])
-INITIAL_HYPERPARAMETERS = TARGET_HYPERPARAMETERS
+INITIAL_HYPERPARAMETERS = jnp.concatenate([MU_INITIAL, TAU_INITIAL_MAP])
+# INITIAL_HYPERPARAMETERS = TARGET_HYPERPARAMETERS
 
 HYPERPARAMETER_NAMES = ['mu_omega', 'mu_gamma', 'tau_omega', 'tau_gamma']
 

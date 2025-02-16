@@ -200,7 +200,150 @@ def create_sw_visualization(df_results, df_runtime, target_hyperparameters, pic_
 # df_mcmc_runtime = pl.read_parquet("simulation_results/new_true_values/mcmc_times_N=*.parquet").sort(pl.col("number of systems"))
 # create_mcmc_visualization(df_mcmc_results, df_mcmc_runtime, cs.TARGET_HYPERPARAMETERS, "new_true_vals_summary")
 
-df_sw_runtime = pl.read_parquet("simulation_results/sw_results/sw_results_N=*.parquet").sort(pl.col("number of systems"))
-df_sw_results = pl.read_parquet("simulation_results/sw_results/sw_times_N=*.parquet").sort(pl.col("number of systems"))
-create_sw_visualization(df_sw_results, df_sw_runtime, cs.TARGET_HYPERPARAMETERS, "new_true_vals_summary_sw")
+# df_sw_runtime = pl.read_parquet("simulation_results/sw_results/sw_results_N=*.parquet").sort(pl.col("number of systems"))
+# df_sw_results = pl.read_parquet("simulation_results/sw_results/sw_times_N=*.parquet").sort(pl.col("number of systems"))
+# create_sw_visualization(df_sw_results, df_sw_runtime, cs.TARGET_HYPERPARAMETERS, "summary_sw")
 
+def create_comparison_visualization(mcmc_results, mcmc_runtime, sw_results, sw_runtime, 
+                                 target_hyperparameters, pic_name):
+    """
+    Create visualization comparing MCMC and SW results side by side
+    
+    Parameters:
+    -----------
+    mcmc_results : polars.DataFrame
+        DataFrame containing MCMC results
+    mcmc_runtime : polars.DataFrame
+        DataFrame containing MCMC runtime information
+    sw_results : polars.DataFrame
+        DataFrame containing SW results
+    sw_runtime : polars.DataFrame
+        DataFrame containing SW runtime information
+    target_hyperparameters : list
+        List of true hyperparameter values
+    pic_name : str
+        Base name for saving the plots
+    """
+    # Set up the visual style
+    plt.rcParams['figure.facecolor'] = 'white'
+    plt.rcParams['axes.grid'] = True
+    plt.rcParams['grid.alpha'] = 0.3
+    plt.rcParams['font.size'] = 10
+    
+    # Create figures
+    fig_hyper, axes = plt.subplots(2, 2, figsize=(15, 12))
+    fig_runtime = plt.figure(figsize=(10, 6))
+    axes = axes.flatten()
+    
+    # Define colors
+    mcmc_colors = ['#1f77b4', '#2ca02c', '#ff7f0e']  # Blue, Green, Orange for MCMC
+    sw_color = '#9467bd'  # Purple for SW
+    true_value_color = '#d62728'  # Red for true value
+    mcmc_metrics = ['5th percentile', 'mean', '95th percentile']
+    
+    # Plot hyperparameter convergence
+    for idx, (param, true_value) in enumerate(zip(cs.HYPERPARAMETER_NAMES, target_hyperparameters)):
+        ax = axes[idx]
+        
+        # Plot MCMC results
+        mcmc_param_data = mcmc_results.filter(pl.col('hyperparameter') == param)
+        for color, metric in zip(mcmc_colors, mcmc_metrics):
+            ax.semilogx(mcmc_param_data['number of systems'], 
+                       mcmc_param_data[metric], 
+                       color=color, 
+                       label=f'MCMC {metric}',
+                       linewidth=2)
+        
+        # Plot SW results
+        sw_param_data = sw_results.filter(pl.col('hyperparameter') == param)
+        ax.semilogx(sw_param_data['number of systems'], 
+                   sw_param_data['sw_estimate'], 
+                   color=sw_color, 
+                   label='SW estimate',
+                   linewidth=2,
+                   linestyle='--')
+        
+        # Add true value line
+        ax.axhline(y=true_value, 
+                  color=true_value_color, 
+                  linestyle=':', 
+                  linewidth=2, 
+                  label='True Value')
+        
+        # Adjust y-axis limits
+        y_min, y_max = ax.get_ylim()
+        padding = 0.1 * (y_max - y_min)
+        new_y_min = min(y_min, true_value - padding)
+        new_y_max = max(y_max, true_value + padding)
+        ax.set_ylim(new_y_min, new_y_max)
+        
+        # Customize subplot
+        ax.set_xlabel('Number of Systems')
+        ax.set_ylabel(f'Value of {param}')
+        ax.set_title(f'Convergence of {param}\nTrue Value: {true_value:.3f}')
+        ax.grid(True, which="both", ls="-", alpha=0.2)
+        
+        # Add legend to first plot only
+        if idx == 0:
+            ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+    
+    # Add overall title and adjust layout
+    fig_hyper.suptitle('MCMC vs SW Hyperparameter Convergence Analysis', 
+                      fontsize=16, y=1.02)
+    fig_hyper.tight_layout()
+    
+    # Create runtime comparison plot
+    ax_runtime = fig_runtime.add_subplot(111)
+    
+    # Plot both runtimes
+    ax_runtime.semilogx(mcmc_runtime['number of systems'], 
+                       mcmc_runtime['run time'], 
+                       color='#1f77b4',
+                       marker='o',
+                       linewidth=2,
+                       markersize=8,
+                       label='MCMC Runtime')
+    
+    ax_runtime.semilogx(sw_runtime['number of systems'], 
+                       sw_runtime['sw run time'], 
+                       color=sw_color,
+                       marker='s',
+                       linewidth=2,
+                       markersize=8,
+                       label='SW Runtime',
+                       linestyle='--')
+    
+    # Customize runtime plot
+    ax_runtime.set_xlabel('Number of Systems')
+    ax_runtime.set_ylabel('Runtime (seconds)')
+    ax_runtime.set_title('MCMC vs SW Runtime Performance Analysis')
+    ax_runtime.grid(True, which="both", ls="-", alpha=0.2)
+    ax_runtime.legend()
+    fig_runtime.tight_layout()
+    
+    # Create output directory if it doesn't exist
+    output_dir = 'simulation_results/comparison'
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Save figures
+    fig_hyper.savefig(f'{output_dir}/hyperparameter_convergence_{pic_name}.png', 
+                      dpi=300, bbox_inches='tight')
+    fig_runtime.savefig(f'{output_dir}/runtime_performance_{pic_name}.png', 
+                      dpi=300, bbox_inches='tight')
+    
+    plt.show()
+
+# Example usage:
+df_mcmc_results = pl.read_parquet("simulation_results/mcmc_results/mcmc_results_N=*.parquet").sort(pl.col("number of systems"))
+df_mcmc_runtime = pl.read_parquet("simulation_results/mcmc_results/mcmc_times_N=*.parquet").sort(pl.col("number of systems"))
+df_sw_results = pl.read_parquet("simulation_results/sw_results/sw_results_N=*.parquet").sort(pl.col("number of systems"))
+df_sw_runtime = pl.read_parquet("simulation_results/sw_results/sw_times_N=*.parquet").sort(pl.col("number of systems"))
+
+create_comparison_visualization(
+    df_mcmc_results, 
+    df_mcmc_runtime,
+    df_sw_results,
+    df_sw_runtime,
+    cs.TARGET_HYPERPARAMETERS,
+    "mcmc_vs_sw_comparison"
+)
