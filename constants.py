@@ -26,23 +26,23 @@ def calculate_map(a, b):
     return b / (a + 1)
 
 # Define hyperprior constants
-MU_PHI = jnp.array([2., 3.])
-SIGMA_PHI = jnp.array([1.2, 1.8])
-A_PHI = jnp.array([4.0, 4.5])
-B_PHI = jnp.array([4.8, 4.4])
+MU_PHI = jnp.array([1.5, 3.])
+SIGMA_PHI = jnp.array([1., 1.2])
+A_PHI = jnp.array([9.0, 11.5])
+B_PHI = jnp.array([8.8, 12.4])
 TAU_PHI_MAP = calculate_map(A_PHI, B_PHI)
 
 # Define target constants
-MU_TARGET = jnp.array([2.5, 3.5])
-TAU_TARGET = jnp.array([1.4, 1.2])
+MU_TARGET = jnp.array([2., 2.5])
+TAU_TARGET = jnp.array([.9, 1.])
 
 # Define starting value constants
-MU_INITIAL = jnp.array([2.3, 3.2])
+MU_INITIAL = jnp.array([1.9, 2.8])
 # SIGMA_INITIAL = jnp.array([.65, 1.])
 # A_INITIAL = jnp.array([4.2, 4.8])
 # B_INITIAL = jnp.array([4.5, 4.6])
 # TAU_INITIAL_MAP = calculate_map(A_INITIAL, B_INITIAL)
-TAU_INITIAL_MAP = jnp.array([1.05, .7])
+TAU_INITIAL_MAP = jnp.array([.9, 1.])
 
 TARGET_HYPERPARAMETERS = jnp.concatenate([MU_TARGET, TAU_TARGET])
 INITIAL_HYPERPARAMETERS = jnp.concatenate([MU_INITIAL, TAU_INITIAL_MAP])

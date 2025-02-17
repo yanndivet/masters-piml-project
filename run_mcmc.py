@@ -146,6 +146,18 @@ def parse_mcmc_summary(mcmc: MCMC, number_systems):
 
     return df_mcmc_results_per_system
 
+def get_acceptance_stats(mcmc: MCMC):
+    """Get acceptance statistics from MCMC sampler"""
+    if not isinstance(mcmc.sampler, NUTS):
+        raise ValueError("This function only works with NUTS sampler")
+    
+    # Get the current state
+    state = mcmc._states[-1]  # Get last state
+    diagnostics = mcmc.sampler.get_diagnostics_str(state)
+    print("Raw diagnostics:", diagnostics)
+    
+    return diagnostics
+
 def run_mcmc(number_systems=cs.N_SYSTEMS, folder_name="mcmc_results2"):
     key = random.key(number_systems) # test number systems instead
     key_sample_params, key_obs_gen, key_mcmc_warmup, key_mcmc_posterior = random.split(key, 4)
@@ -164,15 +176,14 @@ def run_mcmc(number_systems=cs.N_SYSTEMS, folder_name="mcmc_results2"):
     )
 
     kernel = NUTS(potential_fn=target_distribution,
-             step_size=1e-4,  # Try smaller step size
              adapt_step_size=True,
-             target_accept_prob=0.65,  # Try lower target acceptance
-             max_tree_depth=8,  # Add this to control tree depth
+             target_accept_prob=0.9,
+             max_tree_depth=8,
              adapt_mass_matrix=True,
-             dense_mass=True)
+             dense_mass=False)
     mcmc = MCMC(kernel, 
-                num_warmup=5000,
-                num_samples=2000,
+                num_warmup=2000,
+                num_samples=1000,
                 num_chains=cs.N_CHAINS,
                 chain_method='parallel')
     
@@ -189,6 +200,12 @@ def run_mcmc(number_systems=cs.N_SYSTEMS, folder_name="mcmc_results2"):
 
     plot_mcmc_chains(posterior_samples, warmup_samples, number_systems, folder_name)
 
+    divergences = mcmc.get_extra_fields()["diverging"]
+    acceptance_prob_est = 1.0 - jnp.mean(divergences)
+    print("Estimated Acceptance Probability:", acceptance_prob_est)
+
+
+
     df_mcmc_time_per_N = pl.DataFrame({
         'number of systems': number_systems, 
         'run time': end_time - start_time}, 
@@ -204,4 +221,6 @@ def run_full_mcmc(folder_name="mcmc_results_less_informative_prior"):
         df_mcmc_results_per_N.write_parquet(f"simulation_results/{folder_name}/mcmc_results_N={N}.parquet")
         df_mcmc_time_per_N.write_parquet(f"simulation_results/{folder_name}/mcmc_times_N={N}.parquet")
 
+
+# print(numpyro.__version__)
 run_full_mcmc()

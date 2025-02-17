@@ -3,7 +3,7 @@ from jax import jit, lax
 import constants as cs
 
 @partial(jit, static_argnums=(1,2,3))
-def leap_frog_harmonic_oscillator(params, T=cs.T, number_observations=cs.N_SAMPLES, initial_state=(cs.U_0, cs.V_0)):
+def leap_frog_harmonic_oscillator(params, T=cs.T, number_observations=cs.OBSERVATION_LENGTH, initial_state=(cs.U_0, cs.V_0)):
     """
     Leap-frog integration for a harmonic oscillator using JAX and `jax.scan`.
 
