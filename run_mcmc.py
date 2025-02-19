@@ -176,11 +176,12 @@ def run_mcmc(number_systems=cs.N_SYSTEMS, folder_name="mcmc_results2"):
     )
 
     kernel = NUTS(potential_fn=target_distribution,
+             step_size=1e-4,  
              adapt_step_size=True,
-             target_accept_prob=0.9,
+             target_accept_prob=0.65,  
              max_tree_depth=8,
              adapt_mass_matrix=True,
-             dense_mass=False)
+             dense_mass=True)
     mcmc = MCMC(kernel, 
                 num_warmup=2000,
                 num_samples=1000,

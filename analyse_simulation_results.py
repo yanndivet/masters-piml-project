@@ -200,11 +200,8 @@ def create_sw_visualization(df_results, df_runtime, target_hyperparameters, pic_
 # df_mcmc_runtime = pl.read_parquet("simulation_results/new_true_values/mcmc_times_N=*.parquet").sort(pl.col("number of systems"))
 # create_mcmc_visualization(df_mcmc_results, df_mcmc_runtime, cs.TARGET_HYPERPARAMETERS, "new_true_vals_summary")
 
-df_sw_runtime = pl.read_parquet("simulation_results/sw_results_new_C/sw_results_N=*.parquet").sort(pl.col("number of systems"))
-df_sw_results = pl.read_parquet("simulation_results/sw_results_new_C/sw_times_N=*.parquet").sort(pl.col("number of systems"))
-
-print(df_sw_runtime)
-print(df_sw_results)
+# df_sw_runtime = pl.read_parquet("simulation_results/sw_results_new_C/sw_results_N=*.parquet").sort(pl.col("number of systems"))
+# df_sw_results = pl.read_parquet("simulation_results/sw_results_new_C/sw_times_N=*.parquet").sort(pl.col("number of systems"))
 # create_sw_visualization(df_sw_results, df_sw_runtime, cs.TARGET_HYPERPARAMETERS, "summary_sw")
 
 def create_comparison_visualization(mcmc_results, mcmc_runtime, sw_results, sw_runtime, 
@@ -337,16 +334,16 @@ def create_comparison_visualization(mcmc_results, mcmc_runtime, sw_results, sw_r
     plt.show()
 
 # Example usage:
-# df_mcmc_results = pl.read_parquet("simulation_results/mcmc_results/mcmc_results_N=*.parquet").sort(pl.col("number of systems"))
-# df_mcmc_runtime = pl.read_parquet("simulation_results/mcmc_results/mcmc_times_N=*.parquet").sort(pl.col("number of systems"))
-# df_sw_results = pl.read_parquet("simulation_results/sw_results/sw_results_N=*.parquet").sort(pl.col("number of systems"))
-# df_sw_runtime = pl.read_parquet("simulation_results/sw_results/sw_times_N=*.parquet").sort(pl.col("number of systems"))
+df_mcmc_results = pl.read_parquet("simulation_results/mcmc_results_less_informative_prior/mcmc_results_N=*.parquet").sort(pl.col("number of systems"))
+df_mcmc_runtime = pl.read_parquet("simulation_results/mcmc_results_less_informative_prior/mcmc_times_N=*.parquet").sort(pl.col("number of systems"))
+df_sw_results = pl.read_parquet("simulation_results/sw_results_new_C/sw_results_N=*.parquet").sort(pl.col("number of systems"))
+df_sw_runtime = pl.read_parquet("simulation_results/sw_results_new_C/sw_times_N=*.parquet").sort(pl.col("number of systems"))
 
-# create_comparison_visualization(
-#     df_mcmc_results, 
-#     df_mcmc_runtime,
-#     df_sw_results,
-#     df_sw_runtime,
-#     cs.TARGET_HYPERPARAMETERS,
-#     "mcmc_vs_sw_comparison"
-# )
+create_comparison_visualization(
+    df_mcmc_results, 
+    df_mcmc_runtime,
+    df_sw_results,
+    df_sw_runtime,
+    cs.TARGET_HYPERPARAMETERS,
+    "mcmc_vs_sw_comparison_2"
+)
