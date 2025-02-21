@@ -335,7 +335,7 @@ def create_comparison_visualization(mcmc_results, mcmc_runtime, sw_results, sw_r
 
 # Example usage:
 mcmc_folder_name = "mcmc_results_diagonal_mass_matrix"
-sw_folder_name = "sw_results_less_info_prior"
+sw_folder_name = "sw_results_gpu"
 df_mcmc_results = pl.read_parquet(f"simulation_results/{mcmc_folder_name}/mcmc_results_N=*.parquet").sort(pl.col("number of systems"))
 df_mcmc_runtime = pl.read_parquet(f"simulation_results/{mcmc_folder_name}/mcmc_times_N=*.parquet").sort(pl.col("number of systems"))
 df_sw_results = pl.read_parquet(f"simulation_results/{sw_folder_name}/sw_results_N=*.parquet").sort(pl.col("number of systems"))
@@ -347,5 +347,5 @@ create_comparison_visualization(
     df_sw_results,
     df_sw_runtime,
     cs.TARGET_HYPERPARAMETERS,
-    "mcmc_vs_sw_comparison_faster"
+    "mcmc_vs_sw_comparison_gpu"
 )

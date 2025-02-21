@@ -168,19 +168,28 @@ def plot_push_forward_analysis(M=20000):
     true_vals_real = np.exp(cs.MU_TARGET)
     xlims = [20, 40]  # Increased limits to show more of the distribution
     
-    for ax, samples, true_val, title, xlim in zip(
+    # For each parameter (ω and γ)
+    for ax, samples, mu_true, tau_true, title, xlim in zip(
         [ax5, ax6], 
-        population_samples, 
-        true_vals_real, 
+        population_samples,
+        cs.MU_TARGET,  # True μ values
+        cs.TAU_TARGET, # True τ values
         ['ω', 'γ'], 
         xlims
     ):
-        # Filter samples within range
+        # Plot histogram of samples
         samples_filtered = np.array(samples)[np.array(samples) <= xlim]
         sns.histplot(data=samples_filtered, bins=40, stat='density', alpha=0.6, ax=ax,
                     label=f'{title} samples')
-        ax.axvline(true_val, color='r', linestyle='--', 
-                   label=f'True Value: {true_val:.2f}')
+        
+        # Generate points for the true log-normal distribution
+        x = np.linspace(0.01, xlim, 1000)
+        # Calculate the true log-normal PDF using the true μ and τ
+        pdf = np.exp(-(np.log(x) - mu_true)**2 / (2/tau_true)) / (x * np.sqrt(2*np.pi/tau_true))
+        
+        # Plot the true distribution
+        ax.plot(x, pdf, 'r--', label=f'True Log-Normal\n(μ={mu_true:.2f}, τ={tau_true:.2f})')
+        
         ax.set_title(f'Population Distribution - {title}')
         ax.set_xlabel('Value')
         ax.set_ylabel('Density')

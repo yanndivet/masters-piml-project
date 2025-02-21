@@ -1,6 +1,6 @@
 import os
-os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION'] = '0.5'
-os.environ['JAX_PLATFORMS'] = 'cpu'
+os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION'] = '1.0'
+# os.environ['JAX_PLATFORMS'] = 'cpu'
 
 from functools import partial 
 import jax
@@ -14,28 +14,15 @@ import constants as cs
 import data_generation as data_gen
 from jx_pot import sliced_wasserstein_distance_CDiag
 import sampled_distributions as sd
+import true_observations as to
 
 @jit
-def kl_multivariate_gaussians(parameter_estimate, initial_parameter=cs.INITIAL_HYPERPARAMETERS):
-    """Calculate `KL(to||fr)`, where `to` and `fr` are pairs of means and covariance matrices
-    https://gist.github.com/ChuaCheowHuan/18977a3e77c0655d945e8af60633e4df
+def kl_lognormal_distributions(estimated_mean, estimated_std, initial_mean, initial_std):
     """
-    mean_estimate, C_estimate = parameter_estimate[:2], jnp.diag(parameter_estimate[2:])
-    mean_init, C_init = initial_parameter[:2], jnp.diag(initial_parameter[2:])
-    
-    d = mean_estimate - mean_init
-    
-    c, lower = jax.scipy.linalg.cho_factor(C_init)
-    def solve(B):
-        return jax.scipy.linalg.cho_solve((c, lower), B)
-    
-    def logdet(S):
-        return jnp.linalg.slogdet(S)[1]
-
-    term1 = jnp.trace(solve(C_estimate))
-    term2 = logdet(C_init) - logdet(C_estimate)
-    term3 = d.T @ solve(d)
-    return (term1 + term2 + term3 - len(d))/2
+    Source: 
+    https://stats.stackexchange.com/questions/289323/kl-divergence-of-multivariate-lognormal-distributions
+    """
+    return 1 / (2 * initial_std**2) * ((estimated_mean - initial_mean)**2 + estimated_std**2 - initial_std**2) + jnp.log(initial_std / estimated_std)
 
 @partial(jit, static_argnums=3) 
 def regularised_divergence(hyperparameters, key, target_observations, number_systems):
@@ -54,7 +41,9 @@ def regularised_divergence(hyperparameters, key, target_observations, number_sys
     sw_distance = sliced_wasserstein_distance_CDiag(key_sw, estimated_observations, target_observations, C)
     
     # Compute regularisation term
-    kl_divergence = kl_multivariate_gaussians(hyperparameters)
+    kl_divergence = 0
+    for mu_estimate, tau_estimate, mu_initial, tau_initial in zip(mu_hyperparams, tau_hyperparams, cs.MU_PHI, cs.TAU_PHI_MAP):
+        kl_divergence += kl_lognormal_distributions(mu_estimate, tau_estimate, mu_initial, tau_initial)
     
     return sw_distance + kl_divergence
 
@@ -64,13 +53,10 @@ def run_sw(number_systems=cs.N_SYSTEMS):
     opt_state = solver.init(alpha)
     losses = []
 
-    key_true_observations = random.key(number_systems)
-    key_sample_params_from_true_values, key_true_obs_gen, key_regularised_divergence = random.split(key_true_observations, 3)
-    sampled_params = sd.sample_lognormal(key_sample_params_from_true_values, mu=cs.MU_TARGET, tau=cs.TAU_TARGET, m=number_systems)
-    target_observations_from_sampled_params = data_gen.generate_observations(sampled_params, key_true_obs_gen, cs.OBSERVATION_NOISE)
+    key_regularised_divergence = random.key(number_systems)
 
     def loss_fn(parameters):
-        return regularised_divergence(parameters, key_regularised_divergence, target_observations_from_sampled_params, number_systems)
+        return regularised_divergence(parameters, key_regularised_divergence, to.read_true_observations(number_systems), number_systems)
     
     start_time = time()
     for iteration in range(4001):
@@ -106,5 +92,5 @@ def run_sw(number_systems=cs.N_SYSTEMS):
 for N in cs.N_VALUES:
     print("Running for N = ", N)
     df_sw_results_per_N, df_sw_time_per_N = run_sw(N)
-    df_sw_results_per_N.write_parquet(f"simulation_results/sw_results_less_info_prior/sw_results_N={N}.parquet")
-    df_sw_time_per_N.write_parquet(f"simulation_results/sw_results_less_info_prior/sw_times_N={N}.parquet")
+    df_sw_results_per_N.write_parquet(f"simulation_results/sw_results_gpu/sw_results_N={N}.parquet")
+    df_sw_time_per_N.write_parquet(f"simulation_results/sw_results_gpu/sw_times_N={N}.parquet")

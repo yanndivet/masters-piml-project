@@ -1,13 +1,10 @@
 import os
-os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION'] = '0.5'
-os.environ['JAX_PLATFORMS'] = 'cpu'
+os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION'] = '1.0'
 
 from jax import random
 import jax.numpy as jnp
 
-import numpyro
 from numpyro.infer import MCMC, NUTS
-numpyro.set_platform("cpu")
 
 from time import time
 import polars as pl
@@ -17,37 +14,7 @@ from contextlib import redirect_stdout
 
 import constants as cs
 import distributions as dist
-import data_generation as data_gen
-import sampled_distributions as sd
 import true_observations as to
-
-# def plot_mcmc_chains(samples, number_systems):
-#     import matplotlib.pyplot as plt
-    
-#     # Reshape samples to (n_samples, n_params)
-#     samples_reshaped = samples.squeeze()  # This removes the singleton dimension, making it (2000, 14)
-    
-#     # Create subplots for first few parameters
-#     n_params_to_plot = min(4, samples_reshaped.shape[1])  # Let's plot first 4 parameters
-#     fig, axes = plt.subplots(n_params_to_plot, 1, figsize=(12, 3*n_params_to_plot))
-#     fig.suptitle(f'MCMC Chain Traces for N = {number_systems}')
-    
-#     # Plot each parameter
-#     for i in range(n_params_to_plot):
-#         param_samples = samples_reshaped[:, i]
-#         x = np.arange(len(param_samples))
-        
-#         axes[i].plot(x, param_samples, 'b-', linewidth=0.5)
-#         axes[i].axhline(y=cs.TARGET_HYPERPARAMETERS[i], color='r', linestyle='--', alpha=0.8, label='True Value')
-#         param_name = "Hyperparameter" if i < 4 else "Population parameter"
-#         axes[i].set_title(f'{param_name} {i}')
-#         axes[i].set_xlabel('Iteration')
-#         axes[i].set_ylabel('Value')
-#         axes[i].grid(True, linestyle='--', alpha=0.7)
-    
-#     plt.tight_layout()
-#     plt.savefig(f'simulation_results/mcmc_results/mcmc_chains_N={number_systems}.png', dpi=300, bbox_inches='tight')
-#     plt.close()
 
 def plot_mcmc_chains(posterior_samples, warmup_samples, number_systems, folder_name):
     import matplotlib.pyplot as plt
