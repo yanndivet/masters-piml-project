@@ -19,8 +19,7 @@ import constants as cs
 import distributions as dist
 import data_generation as data_gen
 import sampled_distributions as sd
-
-import numpy as np
+import true_observations as to
 
 # def plot_mcmc_chains(samples, number_systems):
 #     import matplotlib.pyplot as plt
@@ -159,19 +158,17 @@ def get_acceptance_stats(mcmc: MCMC):
     return diagnostics
 
 def run_mcmc(number_systems=cs.N_SYSTEMS, folder_name="mcmc_results2"):
-    key = random.key(number_systems) # test number systems instead
-    key_sample_params, key_obs_gen, key_mcmc_warmup, key_mcmc_posterior = random.split(key, 4)
-    sampled_params = sd.sample_lognormal(key_sample_params, mu=cs.MU_TARGET, tau=cs.TAU_TARGET, m=number_systems)
-    sampled_params_concat = jnp.concatenate(sampled_params)
-    target_observations_from_sampled_params = data_gen.generate_observations(sampled_params, key_obs_gen, cs.OBSERVATION_NOISE)
-
-    initial_parameters = jnp.concatenate([cs.INITIAL_HYPERPARAMETERS, sampled_params_concat])
+    key = random.key(number_systems)
+    key_mcmc_warmup, key_mcmc_posterior = random.split(key, 2)
+    
+    population_initial_parameters = jnp.tile(cs.MU_INITIAL, number_systems)
+    initial_parameters = jnp.concatenate([cs.INITIAL_HYPERPARAMETERS, population_initial_parameters])
     initial_parameters_tiled = jnp.tile(initial_parameters, (cs.N_CHAINS, 1))
     noisy_initial_parameters_tiled = initial_parameters_tiled # add noise?
 
     target_distribution = lambda params: dist.log_posterior_distribution(
         params, 
-        target_observations_from_sampled_params, 
+        to.read_true_observations(number_systems), 
         number_systems
     )
 
@@ -181,9 +178,9 @@ def run_mcmc(number_systems=cs.N_SYSTEMS, folder_name="mcmc_results2"):
              target_accept_prob=0.65,  
              max_tree_depth=8,
              adapt_mass_matrix=True,
-             dense_mass=True)
+             dense_mass=False)
     mcmc = MCMC(kernel, 
-                num_warmup=2000,
+                num_warmup=500,
                 num_samples=1000,
                 num_chains=cs.N_CHAINS,
                 chain_method='parallel')
@@ -216,12 +213,10 @@ def run_mcmc(number_systems=cs.N_SYSTEMS, folder_name="mcmc_results2"):
     df_mcmc_results_per_N = parse_mcmc_summary(mcmc, number_systems)
     return df_mcmc_results_per_N, df_mcmc_time_per_N
 
-def run_full_mcmc(folder_name="mcmc_results_less_informative_prior"):
+def run_full_mcmc(folder_name="mcmc_results_diagonal_mass_matrix"):
     for N in cs.N_VALUES:
         df_mcmc_results_per_N, df_mcmc_time_per_N = run_mcmc(N, folder_name)
         df_mcmc_results_per_N.write_parquet(f"simulation_results/{folder_name}/mcmc_results_N={N}.parquet")
         df_mcmc_time_per_N.write_parquet(f"simulation_results/{folder_name}/mcmc_times_N={N}.parquet")
 
-
-# print(numpyro.__version__)
 run_full_mcmc()

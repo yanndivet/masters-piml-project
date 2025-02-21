@@ -96,8 +96,8 @@ def create_mcmc_visualization(df_results, df_runtime, target_hyperparameters, pi
     fig_runtime.tight_layout()
     
     # Save both figures with high resolution
-    fig_hyper.savefig(f'simulation_results/new_true_values/hyperparameter_convergence_{pic_name}.png', dpi=300, bbox_inches='tight')
-    fig_runtime.savefig(f'simulation_results/new_true_values/runtime_performance_{pic_name}.png', dpi=300, bbox_inches='tight')
+    fig_hyper.savefig(f'simulation_results/new_true_values/hyperparameter_convergence_{pic_name}.pdf', dpi=300, bbox_inches='tight')
+    fig_runtime.savefig(f'simulation_results/new_true_values/runtime_performance_{pic_name}.pdf', dpi=300, bbox_inches='tight')
     
     # Display the plots
     plt.show()
@@ -189,8 +189,8 @@ def create_sw_visualization(df_results, df_runtime, target_hyperparameters, pic_
     fig_runtime.tight_layout()
     
     # Save both figures with high resolution
-    fig_hyper.savefig(f'simulation_results/sw_results_new_C/hyperparameter_convergence_{pic_name}.png', dpi=300, bbox_inches='tight')
-    fig_runtime.savefig(f'simulation_results/sw_results_new_C/runtime_performance_{pic_name}.png', dpi=300, bbox_inches='tight')
+    fig_hyper.savefig(f'simulation_results/sw_results_new_C/hyperparameter_convergence_{pic_name}.pdf', dpi=300, bbox_inches='tight')
+    fig_runtime.savefig(f'simulation_results/sw_results_new_C/runtime_performance_{pic_name}.pdf', dpi=300, bbox_inches='tight')
     
     # Display the plots
     plt.show()
@@ -296,22 +296,22 @@ def create_comparison_visualization(mcmc_results, mcmc_runtime, sw_results, sw_r
     ax_runtime = fig_runtime.add_subplot(111)
     
     # Plot both runtimes
-    ax_runtime.semilogx(mcmc_runtime['number of systems'], 
-                       mcmc_runtime['run time'], 
-                       color='#1f77b4',
-                       marker='o',
-                       linewidth=2,
-                       markersize=8,
-                       label='MCMC Runtime')
+    ax_runtime.loglog(mcmc_runtime['number of systems'], 
+                     mcmc_runtime['run time'], 
+                     color='#1f77b4',
+                     marker='o',
+                     linewidth=2,
+                     markersize=8,
+                     label='MCMC Runtime')
     
-    ax_runtime.semilogx(sw_runtime['number of systems'], 
-                       sw_runtime['sw run time'], 
-                       color=sw_color,
-                       marker='s',
-                       linewidth=2,
-                       markersize=8,
-                       label='SW Runtime',
-                       linestyle='--')
+    ax_runtime.loglog(sw_runtime['number of systems'], 
+                     sw_runtime['sw run time'], 
+                     color=sw_color,
+                     marker='s',
+                     linewidth=2,
+                     markersize=8,
+                     label='SW Runtime',
+                     linestyle='--')
     
     # Customize runtime plot
     ax_runtime.set_xlabel('Number of Systems')
@@ -326,18 +326,20 @@ def create_comparison_visualization(mcmc_results, mcmc_runtime, sw_results, sw_r
     os.makedirs(output_dir, exist_ok=True)
     
     # Save figures
-    fig_hyper.savefig(f'{output_dir}/hyperparameter_convergence_{pic_name}.png', 
+    fig_hyper.savefig(f'{output_dir}/hyperparameter_convergence_{pic_name}.pdf', 
                       dpi=300, bbox_inches='tight')
-    fig_runtime.savefig(f'{output_dir}/runtime_performance_{pic_name}.png', 
+    fig_runtime.savefig(f'{output_dir}/runtime_performance_{pic_name}.pdf', 
                       dpi=300, bbox_inches='tight')
     
     plt.show()
 
 # Example usage:
-df_mcmc_results = pl.read_parquet("simulation_results/mcmc_results_less_informative_prior/mcmc_results_N=*.parquet").sort(pl.col("number of systems"))
-df_mcmc_runtime = pl.read_parquet("simulation_results/mcmc_results_less_informative_prior/mcmc_times_N=*.parquet").sort(pl.col("number of systems"))
-df_sw_results = pl.read_parquet("simulation_results/sw_results_new_C/sw_results_N=*.parquet").sort(pl.col("number of systems"))
-df_sw_runtime = pl.read_parquet("simulation_results/sw_results_new_C/sw_times_N=*.parquet").sort(pl.col("number of systems"))
+mcmc_folder_name = "mcmc_results_diagonal_mass_matrix"
+sw_folder_name = "sw_results_less_info_prior"
+df_mcmc_results = pl.read_parquet(f"simulation_results/{mcmc_folder_name}/mcmc_results_N=*.parquet").sort(pl.col("number of systems"))
+df_mcmc_runtime = pl.read_parquet(f"simulation_results/{mcmc_folder_name}/mcmc_times_N=*.parquet").sort(pl.col("number of systems"))
+df_sw_results = pl.read_parquet(f"simulation_results/{sw_folder_name}/sw_results_N=*.parquet").sort(pl.col("number of systems"))
+df_sw_runtime = pl.read_parquet(f"simulation_results/{sw_folder_name}/sw_times_N=*.parquet").sort(pl.col("number of systems"))
 
 create_comparison_visualization(
     df_mcmc_results, 
@@ -345,5 +347,5 @@ create_comparison_visualization(
     df_sw_results,
     df_sw_runtime,
     cs.TARGET_HYPERPARAMETERS,
-    "mcmc_vs_sw_comparison_2"
+    "mcmc_vs_sw_comparison_faster"
 )

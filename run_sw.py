@@ -49,9 +49,8 @@ def regularised_divergence(hyperparameters, key, target_observations, number_sys
     # Generate trajectories
     estimated_observations = data_gen.generate_observations(sampled_parameters, key_obs_gen, cs.OBSERVATION_NOISE)
     
-    # Compute distance
+    # Compute SW distance
     C = (cs.OBSERVATION_NOISE ** 2) * jnp.ones(cs.OBSERVATION_LENGTH)
-    # C = cs.OBSERVATION_NOISE * jnp.ones(cs.N_SAMPLES)
     sw_distance = sliced_wasserstein_distance_CDiag(key_sw, estimated_observations, target_observations, C)
     
     # Compute regularisation term
@@ -107,19 +106,5 @@ def run_sw(number_systems=cs.N_SYSTEMS):
 for N in cs.N_VALUES:
     print("Running for N = ", N)
     df_sw_results_per_N, df_sw_time_per_N = run_sw(N)
-    df_sw_results_per_N.write_parquet(f"simulation_results/sw_results_new_C/sw_results_N={N}.parquet")
-    df_sw_time_per_N.write_parquet(f"simulation_results/sw_results_new_C/sw_times_N={N}.parquet")
-
-# print(cs.INITIAL_HYPERPARAMETERS)
-# N = 7
-# run_sw(N)
-
-# number_systems = 7
-# key_true_observations = random.key(number_systems)
-# key_sample_params_from_true_values, key_true_obs_gen, key_regularised_divergence = random.split(key_true_observations, 3)
-# sampled_params = sd.sample_lognormal(key_sample_params_from_true_values, mu=cs.MU_TARGET, tau=cs.TAU_TARGET, m=number_systems)
-# print(sampled_params)
-# target_observations_from_sampled_params = data_gen.generate_observations(sampled_params, key_true_obs_gen, cs.OBSERVATION_NOISE)
-
-# div = regularised_divergence(cs.INITIAL_HYPERPARAMETERS, key_regularised_divergence, target_observations_from_sampled_params, number_systems)
-# print(div)
+    df_sw_results_per_N.write_parquet(f"simulation_results/sw_results_less_info_prior/sw_results_N={N}.parquet")
+    df_sw_time_per_N.write_parquet(f"simulation_results/sw_results_less_info_prior/sw_times_N={N}.parquet")

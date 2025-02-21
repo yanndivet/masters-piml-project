@@ -33,15 +33,15 @@ B_PHI = jnp.array([8.8, 12.4])
 TAU_PHI_MAP = calculate_map(A_PHI, B_PHI)
 
 # Define target constants
-MU_TARGET = jnp.array([2., 2.5])
-TAU_TARGET = jnp.array([.9, 1.])
+MU_TARGET = jnp.array([2.3, 2.])
+TAU_TARGET = jnp.array([1.1, .9])
 
 # Define starting value constants
 MU_INITIAL = jnp.array([1.9, 2.8])
-TAU_INITIAL_MAP = jnp.array([.9, 1.])
+TAU_INITIAL = jnp.array([.9, 1.])
 
 TARGET_HYPERPARAMETERS = jnp.concatenate([MU_TARGET, TAU_TARGET])
-INITIAL_HYPERPARAMETERS = jnp.concatenate([MU_INITIAL, TAU_INITIAL_MAP])
+INITIAL_HYPERPARAMETERS = jnp.concatenate([MU_INITIAL, TAU_INITIAL]) 
 
 HYPERPARAMETER_NAMES = ['mu_omega', 'mu_gamma', 'tau_omega', 'tau_gamma']
 

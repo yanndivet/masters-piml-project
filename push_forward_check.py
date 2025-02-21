@@ -109,7 +109,7 @@ import data_generation as data_gen
 import constants as cs
 import sampled_distributions as sd
 
-def plot_push_forward_analysis(M=10000):
+def plot_push_forward_analysis(M=20000):
     # Set up the random keys
     key = random.key(42)
     keys = random.split(key, 6)
@@ -190,7 +190,7 @@ def plot_push_forward_analysis(M=10000):
     # Add overall title
     fig.suptitle(f'Push Forward Analysis (M={M} samples)', fontsize=16, y=0.95)
     
-    plt.savefig(f'simulation_results/push_forward_M={M}.png', 
+    plt.savefig(f'simulation_results/push_forward_M={M}.pdf', 
                 dpi=300, bbox_inches='tight')
     plt.close()
 
