@@ -1,9 +1,8 @@
-import os
-os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION'] = '1.0'
-
-from jax import random
+from jax import random, jit
 import jax.numpy as jnp
 
+from numpyro import set_platform
+set_platform('cpu')
 from numpyro.infer import MCMC, NUTS
 
 from time import time
@@ -128,37 +127,49 @@ def run_mcmc(number_systems=cs.N_SYSTEMS, folder_name="mcmc_results2"):
     key = random.key(number_systems)
     key_mcmc_warmup, key_mcmc_posterior = random.split(key, 2)
     
+    # Create initial parameters correctly shaped for multiple chains
     population_initial_parameters = jnp.tile(cs.MU_INITIAL, number_systems)
     initial_parameters = jnp.concatenate([cs.INITIAL_HYPERPARAMETERS, population_initial_parameters])
+    
+    # Make sure initial parameters are properly shaped for multiple chains
     initial_parameters_tiled = jnp.tile(initial_parameters, (cs.N_CHAINS, 1))
-    noisy_initial_parameters_tiled = initial_parameters_tiled # add noise?
 
-    target_distribution = lambda params: dist.log_posterior_distribution(
+    true_observations = to.read_true_observations(number_systems)
+
+    target_distribution = jit(lambda params: dist.log_posterior_distribution(
         params, 
-        to.read_true_observations(number_systems), 
+        true_observations,
         number_systems
-    )
+    ))
 
     kernel = NUTS(potential_fn=target_distribution,
-             step_size=1e-4,  
-             adapt_step_size=True,
-             target_accept_prob=0.65,  
-             max_tree_depth=8,
-             adapt_mass_matrix=True,
-             dense_mass=False)
+                 step_size=1e-4,  
+                 adapt_step_size=True,
+                 target_accept_prob=0.65,  
+                 max_tree_depth=8,
+                 adapt_mass_matrix=True,
+                 dense_mass=False)
+    
     mcmc = MCMC(kernel, 
                 num_warmup=500,
                 num_samples=1000,
                 num_chains=cs.N_CHAINS,
                 chain_method='parallel')
     
+    # Generate proper number of keys for each chain
     warmup_keys = random.split(key_mcmc_warmup, cs.N_CHAINS)
     posterior_keys = random.split(key_mcmc_posterior, cs.N_CHAINS)
 
     start_time = time()
-    mcmc.warmup(warmup_keys, collect_warmup=True, init_params=noisy_initial_parameters_tiled)
+    
+    # Make sure initial parameters match the number of chains
+    mcmc.warmup(warmup_keys, 
+                collect_warmup=True, 
+                init_params=initial_parameters_tiled)
     warmup_samples = mcmc.get_samples()
-    mcmc.run(posterior_keys, init_params=noisy_initial_parameters_tiled)
+    
+    mcmc.run(posterior_keys, 
+             init_params=initial_parameters_tiled)
     end_time = time()
     
     posterior_samples = mcmc.get_samples()
@@ -169,18 +180,16 @@ def run_mcmc(number_systems=cs.N_SYSTEMS, folder_name="mcmc_results2"):
     acceptance_prob_est = 1.0 - jnp.mean(divergences)
     print("Estimated Acceptance Probability:", acceptance_prob_est)
 
-
-
     df_mcmc_time_per_N = pl.DataFrame({
         'number of systems': number_systems, 
-        'run time': end_time - start_time}, 
+        'run time': end_time - start_time},
         schema={'number of systems': pl.UInt16, 
                 'run time': pl.Float64})
     
     df_mcmc_results_per_N = parse_mcmc_summary(mcmc, number_systems)
     return df_mcmc_results_per_N, df_mcmc_time_per_N
 
-def run_full_mcmc(folder_name="mcmc_results_diagonal_mass_matrix"):
+def run_full_mcmc(folder_name="mcmc_results_cpu"):
     for N in cs.N_VALUES:
         df_mcmc_results_per_N, df_mcmc_time_per_N = run_mcmc(N, folder_name)
         df_mcmc_results_per_N.write_parquet(f"simulation_results/{folder_name}/mcmc_results_N={N}.parquet")

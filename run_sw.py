@@ -1,11 +1,12 @@
 import os
 os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION'] = '1.0'
-# os.environ['JAX_PLATFORMS'] = 'cpu'
+os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
+os.environ['XLA_PYTHON_CLIENT_ALLOCATOR'] = 'platform'
 
 from functools import partial 
 import jax
 import jax.numpy as jnp
-from jax import random, jit
+from jax import random, jit, vmap
 import optax
 from time import time
 import polars as pl
@@ -24,26 +25,45 @@ def kl_lognormal_distributions(estimated_mean, estimated_std, initial_mean, init
     """
     return 1 / (2 * initial_std**2) * ((estimated_mean - initial_mean)**2 + estimated_std**2 - initial_std**2) + jnp.log(initial_std / estimated_std)
 
-@partial(jit, static_argnums=3) 
+@partial(jit, static_argnums=3)
 def regularised_divergence(hyperparameters, key, target_observations, number_systems):
-    """
-    Compute objective using Sliced-Wasserstein distance with transformed parameters and a regularisation KL-divergence term
-    """
-    key, key_sample_params, key_obs_gen, key_sw = random.split(key, 4)
+    """Optimized regularized divergence computation for GPU"""
+    keys = random.split(key, 4)
     mu_hyperparams, tau_hyperparams = hyperparameters[:2], hyperparameters[2:]
-    sampled_parameters = sd.sample_lognormal(key_sample_params, mu=mu_hyperparams, tau=tau_hyperparams, m=number_systems)
     
-    # Generate trajectories
-    estimated_observations = data_gen.generate_observations(sampled_parameters, key_obs_gen, cs.OBSERVATION_NOISE)
+    # Batch sample parameters
+    sampled_parameters = sd.sample_lognormal_batched(
+        keys[1], 
+        mu=mu_hyperparams, 
+        tau=tau_hyperparams, 
+        batch_size=number_systems
+    )
+    
+    # Generate observations in parallel
+    estimated_observations = vmap(data_gen.generate_observations)(
+        sampled_parameters,
+        random.split(keys[2], number_systems),
+        jnp.full(number_systems, cs.OBSERVATION_NOISE)
+    )
     
     # Compute SW distance
     C = (cs.OBSERVATION_NOISE ** 2) * jnp.ones(cs.OBSERVATION_LENGTH)
-    sw_distance = sliced_wasserstein_distance_CDiag(key_sw, estimated_observations, target_observations, C)
+    sw_distance = sliced_wasserstein_distance_CDiag(
+        keys[3],
+        estimated_observations,
+        target_observations,
+        C
+    )
     
-    # Compute regularisation term
-    kl_divergence = 0
-    for mu_estimate, tau_estimate, mu_initial, tau_initial in zip(mu_hyperparams, tau_hyperparams, cs.MU_PHI, cs.TAU_PHI_MAP):
-        kl_divergence += kl_lognormal_distributions(mu_estimate, tau_estimate, mu_initial, tau_initial)
+    # Vectorized KL divergence computation
+    kl_divergence = jnp.sum(
+        kl_lognormal_distributions(
+            mu_hyperparams,
+            tau_hyperparams,
+            cs.MU_PHI,
+            cs.TAU_PHI_MAP
+        )
+    )
     
     return sw_distance + kl_divergence
 

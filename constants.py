@@ -13,6 +13,8 @@ OBSERVATION_LENGTH = 200
 T = 5
 U_0 = 0.0
 V_0 = 1.0
+X_0 = 1.0
+Y_0 = 1.0
 
 LEARNING_RATE = 5e-3
 EPSILON = 1e-6
