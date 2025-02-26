@@ -6,7 +6,7 @@ os.environ['XLA_PYTHON_CLIENT_ALLOCATOR'] = 'platform'
 from functools import partial 
 import jax
 import jax.numpy as jnp
-from jax import random, jit, vmap
+from jax import random, jit
 import optax
 from time import time
 import polars as pl
@@ -31,31 +31,22 @@ def regularised_divergence(hyperparameters, key, target_observations, number_sys
     keys = random.split(key, 4)
     mu_hyperparams, tau_hyperparams = hyperparameters[:2], hyperparameters[2:]
     
-    # Batch sample parameters
-    sampled_parameters = sd.sample_lognormal_batched(
+    sampled_parameters = sd.sample_lognormal(
         keys[1], 
         mu=mu_hyperparams, 
-        tau=tau_hyperparams, 
-        batch_size=number_systems
+        tau=tau_hyperparams,
+        m=number_systems
     )
     
-    # Generate observations in parallel
-    estimated_observations = vmap(data_gen.generate_observations)(
-        sampled_parameters,
-        random.split(keys[2], number_systems),
-        jnp.full(number_systems, cs.OBSERVATION_NOISE)
-    )
+    estimated_observations = data_gen.generate_observations(sampled_parameters, keys[2], cs.OBSERVATION_NOISE)
     
-    # Compute SW distance
-    C = (cs.OBSERVATION_NOISE ** 2) * jnp.ones(cs.OBSERVATION_LENGTH)
     sw_distance = sliced_wasserstein_distance_CDiag(
         keys[3],
         estimated_observations,
         target_observations,
-        C
+        C=cs.OBSERVATION_NOISE**2 * jnp.ones(cs.OBSERVATION_LENGTH)
     )
     
-    # Vectorized KL divergence computation
     kl_divergence = jnp.sum(
         kl_lognormal_distributions(
             mu_hyperparams,
@@ -67,16 +58,17 @@ def regularised_divergence(hyperparameters, key, target_observations, number_sys
     
     return sw_distance + kl_divergence
 
-def run_sw(number_systems=cs.N_SYSTEMS):
+def run_sw(number_systems=cs.N_SYSTEMS, experiment_number=1):
     solver = optax.adam(learning_rate=cs.LEARNING_RATE)
     alpha = cs.INITIAL_HYPERPARAMETERS
     opt_state = solver.init(alpha)
     losses = []
 
-    key_regularised_divergence = random.key(number_systems)
+    unique_seed = experiment_number * 1000 + number_systems
+    key_regularised_divergence = random.key(unique_seed)
 
     def loss_fn(parameters):
-        return regularised_divergence(parameters, key_regularised_divergence, to.read_true_observations(number_systems), number_systems)
+        return regularised_divergence(parameters, key_regularised_divergence, to.read_true_observations(number_systems, experiment_number), number_systems)
     
     start_time = time()
     for iteration in range(4001):
@@ -109,8 +101,12 @@ def run_sw(number_systems=cs.N_SYSTEMS):
 
     return df_sw_result_per_system, df_sw_time_per_N
 
-for N in cs.N_VALUES:
-    print("Running for N = ", N)
-    df_sw_results_per_N, df_sw_time_per_N = run_sw(N)
-    df_sw_results_per_N.write_parquet(f"simulation_results/sw_results_gpu/sw_results_N={N}.parquet")
-    df_sw_time_per_N.write_parquet(f"simulation_results/sw_results_gpu/sw_times_N={N}.parquet")
+def run_full_sw(folder_name="sw_results_gpu"):
+    for experiment_number in range(1, 11):
+        for N in cs.N_VALUES:
+            print(f"Running SW method for experiment = {experiment_number}, N = {N}")
+            df_mcmc_results_per_N, df_mcmc_time_per_N = run_sw(N, experiment_number)
+            df_mcmc_results_per_N.write_parquet(f"simulation_results/{folder_name}/results_experiment={experiment_number}_N={N}.parquet")
+            df_mcmc_time_per_N.write_parquet(f"simulation_results/{folder_name}/times_experiment={experiment_number}_N={N}.parquet")
+
+run_full_sw()

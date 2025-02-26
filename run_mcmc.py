@@ -15,7 +15,7 @@ import constants as cs
 import distributions as dist
 import true_observations as to
 
-def plot_mcmc_chains(posterior_samples, warmup_samples, number_systems, folder_name):
+def plot_mcmc_chains(posterior_samples, warmup_samples, number_systems, experiment_number, folder_name):
     import matplotlib.pyplot as plt
     import numpy as np
     
@@ -72,7 +72,7 @@ def plot_mcmc_chains(posterior_samples, warmup_samples, number_systems, folder_n
     plt.rc('font', family='serif')
     
     plt.tight_layout()
-    plt.savefig(f'simulation_results/{folder_name}/mcmc_chains_N={number_systems}.png', 
+    plt.savefig(f'simulation_results/{folder_name}/mcmc_chains_experiment={experiment_number}_N={number_systems}.png', 
                 dpi=300, bbox_inches='tight')
     plt.close()
 
@@ -123,7 +123,7 @@ def get_acceptance_stats(mcmc: MCMC):
     
     return diagnostics
 
-def run_mcmc(number_systems=cs.N_SYSTEMS, folder_name="mcmc_results2"):
+def run_mcmc(number_systems=cs.N_SYSTEMS, experiment_number=1, folder_name="mcmc_results"):
     key = random.key(number_systems)
     key_mcmc_warmup, key_mcmc_posterior = random.split(key, 2)
     
@@ -134,7 +134,7 @@ def run_mcmc(number_systems=cs.N_SYSTEMS, folder_name="mcmc_results2"):
     # Make sure initial parameters are properly shaped for multiple chains
     initial_parameters_tiled = jnp.tile(initial_parameters, (cs.N_CHAINS, 1))
 
-    true_observations = to.read_true_observations(number_systems)
+    true_observations = to.read_true_observations(number_systems, experiment_number, True)
 
     target_distribution = jit(lambda params: dist.log_posterior_distribution(
         params, 
@@ -174,7 +174,7 @@ def run_mcmc(number_systems=cs.N_SYSTEMS, folder_name="mcmc_results2"):
     
     posterior_samples = mcmc.get_samples()
 
-    plot_mcmc_chains(posterior_samples, warmup_samples, number_systems, folder_name)
+    plot_mcmc_chains(posterior_samples, warmup_samples, number_systems, experiment_number, folder_name)
 
     divergences = mcmc.get_extra_fields()["diverging"]
     acceptance_prob_est = 1.0 - jnp.mean(divergences)
@@ -190,9 +190,11 @@ def run_mcmc(number_systems=cs.N_SYSTEMS, folder_name="mcmc_results2"):
     return df_mcmc_results_per_N, df_mcmc_time_per_N
 
 def run_full_mcmc(folder_name="mcmc_results_cpu"):
-    for N in cs.N_VALUES:
-        df_mcmc_results_per_N, df_mcmc_time_per_N = run_mcmc(N, folder_name)
-        df_mcmc_results_per_N.write_parquet(f"simulation_results/{folder_name}/mcmc_results_N={N}.parquet")
-        df_mcmc_time_per_N.write_parquet(f"simulation_results/{folder_name}/mcmc_times_N={N}.parquet")
+    for experiment_number in range(1, 11):
+        for N in cs.N_VALUES:
+            print(f"Running MCMC for experiment = {experiment_number}, N = {N}")
+            df_mcmc_results_per_N, df_mcmc_time_per_N = run_mcmc(N, experiment_number, folder_name)
+            df_mcmc_results_per_N.write_parquet(f"simulation_results/{folder_name}/results_experiment={experiment_number}_N={N}.parquet")
+            df_mcmc_time_per_N.write_parquet(f"simulation_results/{folder_name}/times_experiment={experiment_number}_N={N}.parquet")
 
 run_full_mcmc()
