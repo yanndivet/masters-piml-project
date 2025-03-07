@@ -51,23 +51,21 @@ def lotka_volterra(params, T=cs.T, number_observations=cs.OBSERVATION_LENGTH, in
     Returns:
         JAX array of populations over time, containing both x and y values.
     """
-    # Unpack parameters
-    if len(params) != 4:
-        raise ValueError(f"Expected 4 parameters for Lotka-Volterra model, got {len(params)}")
     
+    # Unpack parameters
     alpha, beta, gamma, delta = params
     dt = T / number_observations
 
     def next_state(state, _):
         x_prev, y_prev = state
         
-        # Update x first
+        # Simple Euler method, matching your original implementation
         x_next = x_prev + dt * (alpha * x_prev - beta * x_prev * y_prev)
-        
-        # Then update y using the new x
-        y_next = y_prev + dt * (-gamma * y_prev + delta * x_next * y_prev)
+        y_next = y_prev + dt * (gamma * x_prev * y_prev - delta * y_prev)
         
         return (x_next, y_next), (x_next, y_next)
 
-    _, populations = lax.scan(f=next_state, init=initial_state, length=number_observations)
-    return populations
+    _, populations = lax.scan(f=next_state, init=initial_state, xs=None, length=number_observations)
+    x_values, y_values = populations
+    
+    return x_values, y_values

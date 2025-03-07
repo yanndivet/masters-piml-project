@@ -1,6 +1,5 @@
 from functools import partial
-from jax import random, jit, vmap
-import jax.numpy as jnp
+from jax import random, jit, vmap, debug
 
 from leapfrog_integrator import damped_harmonic_oscillator
 import constants as cs
@@ -13,9 +12,9 @@ def noisy_observations(z_params, key, sigma_noise):
 
 @partial(jit, static_argnums=2)
 def generate_observations(params, key, sigma):
-    keys = random.split(key, len(params[0]))
+    keys = random.split(key, params[0].shape)
     return vmap(noisy_observations, in_axes=(0, 0, None))(
-        jnp.array(list(zip(*params))), 
+        params.T,     
         keys, 
         sigma
     )

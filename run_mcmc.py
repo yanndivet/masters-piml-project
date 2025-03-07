@@ -174,7 +174,7 @@ def run_mcmc(number_systems=cs.N_SYSTEMS, experiment_number=1, folder_name="mcmc
     
     posterior_samples = mcmc.get_samples()
 
-    plot_mcmc_chains(posterior_samples, warmup_samples, number_systems, experiment_number, folder_name)
+    # plot_mcmc_chains(posterior_samples, warmup_samples, number_systems, experiment_number, folder_name)
 
     divergences = mcmc.get_extra_fields()["diverging"]
     acceptance_prob_est = 1.0 - jnp.mean(divergences)
@@ -197,4 +197,7 @@ def run_full_mcmc(folder_name="mcmc_results_cpu"):
             df_mcmc_results_per_N.write_parquet(f"simulation_results/{folder_name}/results_experiment={experiment_number}_N={N}.parquet")
             df_mcmc_time_per_N.write_parquet(f"simulation_results/{folder_name}/times_experiment={experiment_number}_N={N}.parquet")
 
-run_full_mcmc()
+# run_full_mcmc()
+N = 7
+experiment = 1
+run_mcmc(N, experiment)
