@@ -1,22 +1,18 @@
 from functools import partial
 import jax.numpy as jnp
-from jax import jit, random
+from jax import jit, random, vmap
 
 @partial(jit, static_argnums=3) 
 def sample_normal_distribution(key, mean, std, m=1):
    keys = random.split(key, len(mean))
-   return jnp.array([
-       random.normal(keys[i], shape=(m,)) * std + mean
-       for i, (mean, std) in enumerate(zip(mean, std))
-   ])
+   sample_single_normal_distribution = lambda k, mu_i, sigma_i: random.normal(k, shape=(m,)) * sigma_i + mu_i
+   return jnp.array(vmap(sample_single_normal_distribution)(keys, mean, std))
 
 @partial(jit, static_argnums=3) 
 def sample_inverse_gamma_distribution(key, a, b, m=1):
-   keys = random.split(key, len(a)) 
-   return jnp.array([
-       b_i / random.gamma(keys[i], a=a_i, shape=(m,))
-       for i, (a_i, b_i) in enumerate(zip(a, b))
-   ])
+    keys = random.split(key, len(a))
+    sample_single_inverse_gamma_distribution = lambda k, a_i, b_i: b_i / random.gamma(k, a=a_i, shape=(m,))
+    return jnp.array(vmap(sample_single_inverse_gamma_distribution)(keys, a, b))
 
 @partial(jit, static_argnums=3) 
 def sample_lognormal(key, mu, tau, m):
@@ -51,24 +47,58 @@ def sample_lognormal(key, mu, tau, m):
     
     return samples
 
-@partial(jit, static_argnums=3) 
-def sample_lognormal_distribution(key, mu, tau, m):
-    """
-    Sample from a lognormal distribution with parameters in log space.
+# @partial(jit, static_argnums=3)
+# def sample_lognormal(key, mu, tau, m):
+#     """
+#     Sample from a lognormal distribution with desired mean mu and std tau in original space.
+#     Includes safety checks to prevent numerical instability.
+#     """
+#     # Add small epsilon to prevent division by zero
+#     epsilon = 1e-8
+#     mu_safe = jnp.maximum(mu, epsilon)
     
-    Args:
-        key: JAX random key
-        mu: location parameter (in log space)
-        tau: scale parameter (in log space)
-        m: number of samples
-    """
-    # Split key for each parameter
-    keys = random.split(key, len(mu))
+#     # Clip variance ratio to reasonable values
+#     variance_ratio = jnp.clip((tau/mu_safe)**2, 0.0, 1e6)
     
-    # JAX's lognormal takes only sigma, so we need to transform normal samples
-    samples = jnp.array([
-        jnp.exp(mu[i] + tau[i] * random.normal(k, shape=(m,)))
-        for i, k in enumerate(keys)
-    ])
+#     # Compute scale parameter (with safety checks)
+#     scale = jnp.sqrt(jnp.log1p(variance_ratio))  # Using log1p for numerical stability
+#     scale = jnp.clip(scale, 0.0, 10.0)  # Clip to reasonable range
     
-    return samples
+#     # Compute location parameter
+#     loc = jnp.log(mu_safe) - 0.5 * scale**2
+    
+#     # Split key for each parameter
+#     keys = random.split(key, len(mu))
+    
+#     # Sample using normal + exp approach
+#     samples = jnp.array([
+#         jnp.exp(loc[i] + scale[i] * random.normal(k, shape=(m,)))
+#         for i, k in enumerate(keys)
+#     ])
+    
+#     # Final safety check for invalid values
+#     samples = jnp.where(jnp.isfinite(samples), samples, mu_safe.reshape(-1, 1))
+    
+#     return samples
+
+# @partial(jit, static_argnames=["m"])
+# def sample_lognormal(key, mu, tau, m):
+#     """
+#     Sample from a lognormal distribution with desired mean `mu` and std `tau` in original space.
+#     Uses numerically stable computations and efficient key splitting.
+#     """
+#     epsilon = 1e-8
+#     mu_safe = jnp.maximum(mu, epsilon)  # Ensure mu is positive
+    
+#     variance_ratio = jnp.clip((tau / mu_safe) ** 2, 0.0, 1e3)  # Reasonable bound
+    
+#     scale = jnp.sqrt(jnp.log1p(variance_ratio))  # Log1p for stability
+#     scale = jnp.clip(scale, 0.0, 10.0)  # Avoid extreme values
+    
+#     loc = jnp.log(mu_safe) - 0.5 * scale**2  # Corrected location parameter
+    
+#     keys = random.split(key, mu.shape[0])  # Efficient key splitting
+    
+#     samples = jnp.exp(loc[:, None] + scale[:, None] * random.normal(keys, shape=(mu.shape[0], m)))
+
+#     return samples

@@ -1,5 +1,5 @@
 from functools import partial
-from jax import random, jit, vmap, debug
+from jax import random, jit, vmap
 
 from leapfrog_integrator import damped_harmonic_oscillator
 import constants as cs

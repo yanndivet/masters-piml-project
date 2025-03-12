@@ -8,33 +8,31 @@ import constants as cs
 
 # Base distributions
 @jit
-def log_normal_multi_pdf(x: jnp.array, mean: jnp.array, std) -> float:
+def negative_log_normal_pdf(x: jnp.array, mean: jnp.array, std) -> float:
     return -jnp.sum(norm.logpdf(x, mean, std))
 
 @jit
-def log_invgamma_pdf(x: float, a: float, b: float) -> float:
+def negative_log_invgamma_pdf(x: float, a: float, b: float) -> float:
     log_density = -(a + 1) * jnp.log(x) - b/x - jnp.log(b**(-a) / jnp.exp(scipy.special.gammaln(a)))
     return -jnp.sum(log_density)
 
 # Hyperprior distribution
 @jit
 def log_hyperprior_distribution(mu, tau, mu_phi=cs.MU_PHI, sigma_phi=cs.SIGMA_PHI, a_phi=cs.A_PHI, b_phi=cs.B_PHI) -> float:
-    log_hyperprior_mu = log_normal_multi_pdf(mu, mu_phi, sigma_phi)
-    log_hyperprior_tau = log_invgamma_pdf(tau, a_phi, b_phi)
+    log_hyperprior_mu = negative_log_normal_pdf(mu, mu_phi, sigma_phi)
+    log_hyperprior_tau = negative_log_invgamma_pdf(tau, a_phi, b_phi)
     return log_hyperprior_mu + log_hyperprior_tau
 
 # Population distribution
 @jit 
-def log_population_distribution_n_systems(z, mu, tau):
-    # z shape: (N_SYSTEMS, 2)
-    # mu shape: (2,)
+def log_population_distribution_n_systems(z, mu, tau) -> float:
     # Vectorize by broadcasting mu
     mu_broadcast = jnp.broadcast_to(mu, z.shape)  # Shape: (N_SYSTEMS, 2)
     return -jnp.sum(norm.logpdf(z, mu_broadcast, tau))
 
 # Likelihood distribution
 @jit
-def log_likelihood_distribution_n_systems(z, y):
+def log_likelihood_distribution_n_systems(z, y) -> float:
     # Generate keys for all systems
     keys = random.split(random.PRNGKey(0), z.shape[0])
     
