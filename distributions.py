@@ -50,9 +50,9 @@ def log_likelihood_distribution_n_systems(z, y) -> float:
 # Final distribution
 @partial(jit, static_argnums=2) 
 def log_posterior_distribution(all_parameters, y, number_systems):
-    mu = all_parameters[:2]
-    tau = all_parameters[2:4]
-    z = all_parameters[4:].reshape(number_systems, 2)
+    mu = all_parameters[:len(cs.HYPERPARAMETERS)]
+    tau = all_parameters[len(cs.HYPERPARAMETERS):len(cs.TARGET_HYPERPARAMETERS)]
+    z = all_parameters[len(cs.TARGET_HYPERPARAMETERS):].reshape(number_systems, len(cs.HYPERPARAMETERS))
     
     log_hyperprior = log_hyperprior_distribution(mu, tau)
     log_population = log_population_distribution_n_systems(z, mu, tau)

@@ -15,29 +15,109 @@ import constants as cs
 import distributions as dist
 import true_observations as to
 
-def plot_mcmc_chains(posterior_samples, warmup_samples, number_systems, experiment_number, folder_name):
+# def plot_mcmc_chains(posterior_samples, warmup_samples, number_systems, experiment_number):
+#     import matplotlib.pyplot as plt
+#     import numpy as np
+    
+#     # Reshape samples to (n_samples, n_params)
+#     posterior_reshaped = posterior_samples.squeeze()
+#     warmup_reshaped = warmup_samples.squeeze()
+    
+#     n_params_to_plot = posterior_reshaped.shape[1]
+#     fig, axes = plt.subplots(n_params_to_plot, 1, figsize=(12, 3*n_params_to_plot))
+    
+#     # Use LaTeX for the title
+#     fig.suptitle(f'MCMC Chain Traces (including warmup) for $N = {number_systems}$')
+    
+#     # Plot each parameter
+#     for i in range(n_params_to_plot):
+#         # Get samples for current parameter
+#         warmup_param = warmup_reshaped[:, i]
+#         posterior_param = posterior_reshaped[:, i] 
+        
+#         # Create x-axes for both phases
+#         x_warmup = np.arange(len(warmup_param))
+#         x_posterior = np.arange(len(warmup_param), len(warmup_param) + len(posterior_param))
+        
+#         # Plot warmup phase
+#         axes[i].plot(x_warmup, warmup_param, 'gray', alpha=0.5, linewidth=0.5, label='Warmup')
+        
+#         # Plot sampling phase
+#         axes[i].plot(x_posterior, posterior_param, 'b-', linewidth=0.5, label='Sampling')
+        
+#         # Add true value line
+#         axes[i].axhline(y=cs.TARGET_HYPERPARAMETERS[i], color='r', linestyle='--', 
+#                        alpha=0.8, label='True Value')
+        
+#         # Add vertical line separating warmup and sampling phases
+#         axes[i].axvline(x=len(warmup_param), color='k', linestyle=':', alpha=0.5,
+#                        label='End of Warmup')
+        
+#         # Customize plot with LaTeX parameter names
+#         axes[i].set_title(cs.HYPERPARAMETER_NAMES[i])
+#         axes[i].set_xlabel('Iteration')
+#         axes[i].set_ylabel('Value')
+#         axes[i].grid(True, linestyle='--', alpha=0.7)
+        
+#         # Add legend (only for the first subplot to avoid redundancy)
+#         if i == 0:
+#             axes[i].legend(loc='upper right', fontsize='small')
+    
+#     # Enable LaTeX rendering
+#     plt.rc('text', usetex=True)
+#     plt.rc('font', family='serif')
+    
+#     plt.tight_layout()
+#     plt.savefig(f'{cs.PROBLEM}/MCMC/Chains/experiment={experiment_number}_N={number_systems}.pdf', 
+#                 dpi=300, bbox_inches='tight')
+#     plt.close()
+
+def plot_mcmc_chains(posterior_samples, warmup_samples, number_systems, experiment_number, 
+                     param_indices=None, param_type="", filename_suffix=""):
+    """
+    Plot MCMC chains for selected parameters
+    
+    Args:
+        posterior_samples: Posterior samples from MCMC
+        warmup_samples: Warmup samples from MCMC
+        number_systems: Number of systems in the model
+        experiment_number: Experiment number
+        param_indices: Indices of parameters to plot (if None, plots first 4)
+        param_type: Type of parameters being plotted (e.g., "mu" or "tau")
+        filename_suffix: Additional text to add to the filename
+    """
     import matplotlib.pyplot as plt
     import numpy as np
-    
-    # Define parameter names using LaTeX notation
-    HYPERPARAMETER_NAMES = [r'$\mu_\omega$', r'$\mu_\gamma$', r'$\tau_\omega$', r'$\tau_\gamma$']
     
     # Reshape samples to (n_samples, n_params)
     posterior_reshaped = posterior_samples.squeeze()
     warmup_reshaped = warmup_samples.squeeze()
     
-    # Create subplots for first few parameters
-    n_params_to_plot = min(4, posterior_reshaped.shape[1])
+    # Get parameter indices to plot
+    if param_indices is None:
+        n_params_to_plot = min(4, posterior_reshaped.shape[1])
+        param_indices = list(range(n_params_to_plot))
+    else:
+        n_params_to_plot = len(param_indices)
+    
+    # Create subplots for selected parameters
     fig, axes = plt.subplots(n_params_to_plot, 1, figsize=(12, 3*n_params_to_plot))
     
+    # Handle case when n_params_to_plot is 1
+    if n_params_to_plot == 1:
+        axes = [axes]
+    
     # Use LaTeX for the title
-    fig.suptitle(f'MCMC Chain Traces (including warmup) for $N = {number_systems}$')
+    title = f'MCMC Chain Traces (including warmup) for $N = {number_systems}$'
+    if param_type:
+        title += f' - {param_type} parameters'
+    fig.suptitle(title)
     
     # Plot each parameter
-    for i in range(n_params_to_plot):
+    for i, param_idx in enumerate(param_indices):
         # Get samples for current parameter
-        warmup_param = warmup_reshaped[:, i]
-        posterior_param = posterior_reshaped[:, i]
+        warmup_param = warmup_reshaped[:, param_idx]
+        posterior_param = posterior_reshaped[:, param_idx] 
         
         # Create x-axes for both phases
         x_warmup = np.arange(len(warmup_param))
@@ -49,16 +129,18 @@ def plot_mcmc_chains(posterior_samples, warmup_samples, number_systems, experime
         # Plot sampling phase
         axes[i].plot(x_posterior, posterior_param, 'b-', linewidth=0.5, label='Sampling')
         
-        # Add true value line
-        axes[i].axhline(y=cs.TARGET_HYPERPARAMETERS[i], color='r', linestyle='--', 
-                       alpha=0.8, label='True Value')
+        # Add true value line if available
+        if param_idx < len(cs.TARGET_HYPERPARAMETERS):
+            axes[i].axhline(y=cs.TARGET_HYPERPARAMETERS[param_idx], color='r', linestyle='--', 
+                          alpha=0.8, label='True Value')
         
         # Add vertical line separating warmup and sampling phases
         axes[i].axvline(x=len(warmup_param), color='k', linestyle=':', alpha=0.5,
                        label='End of Warmup')
         
         # Customize plot with LaTeX parameter names
-        axes[i].set_title(HYPERPARAMETER_NAMES[i])
+        param_name = cs.HYPERPARAMETER_NAMES[param_idx] if param_idx < len(cs.HYPERPARAMETER_NAMES) else f"Parameter {param_idx}"
+        axes[i].set_title(param_name)
         axes[i].set_xlabel('Iteration')
         axes[i].set_ylabel('Value')
         axes[i].grid(True, linestyle='--', alpha=0.7)
@@ -72,9 +154,11 @@ def plot_mcmc_chains(posterior_samples, warmup_samples, number_systems, experime
     plt.rc('font', family='serif')
     
     plt.tight_layout()
-    plt.savefig(f'simulation_results/{folder_name}/mcmc_chains_experiment={experiment_number}_N={number_systems}.png', 
-                dpi=300, bbox_inches='tight')
+    file_path = f'{cs.PROBLEM}/MCMC/Chains/experiment={experiment_number}_N={number_systems}{filename_suffix}.pdf'
+    plt.savefig(file_path, dpi=300, bbox_inches='tight')
     plt.close()
+    
+    return file_path
 
 def parse_mcmc_summary(mcmc: MCMC, number_systems):
     # Capture print_summary output
@@ -123,8 +207,9 @@ def get_acceptance_stats(mcmc: MCMC):
     
     return diagnostics
 
-def run_mcmc(number_systems=cs.N_SYSTEMS, experiment_number=1, folder_name="mcmc_results"):
-    key = random.key(number_systems)
+def run_mcmc(number_systems, experiment_number):
+    unique_seed = experiment_number * 1000 + number_systems
+    key = random.key(unique_seed)
     key_mcmc_warmup, key_mcmc_posterior = random.split(key, 2)
     
     # Create initial parameters correctly shaped for multiple chains
@@ -134,7 +219,7 @@ def run_mcmc(number_systems=cs.N_SYSTEMS, experiment_number=1, folder_name="mcmc
     # Make sure initial parameters are properly shaped for multiple chains
     initial_parameters_tiled = jnp.tile(initial_parameters, (cs.N_CHAINS, 1))
 
-    true_observations = to.read_true_observations(number_systems, experiment_number, True)
+    true_observations = to.read_true_observations(number_systems, experiment_number, False)
 
     target_distribution = jit(lambda params: dist.log_posterior_distribution(
         params, 
@@ -173,11 +258,21 @@ def run_mcmc(number_systems=cs.N_SYSTEMS, experiment_number=1, folder_name="mcmc
     
     posterior_samples = mcmc.get_samples()
 
-    plot_mcmc_chains(posterior_samples, warmup_samples, number_systems, experiment_number, folder_name)
+    # plot_mcmc_chains(posterior_samples, warmup_samples, number_systems, experiment_number)
 
-    divergences = mcmc.get_extra_fields()["diverging"]
-    acceptance_prob_est = 1.0 - jnp.mean(divergences)
-    print("Estimated Acceptance Probability:", acceptance_prob_est)
+    # Plot mu parameters (assuming first 4 are mu terms)
+    mu_indices = list(range(4))
+    plot_mcmc_chains(posterior_samples, warmup_samples, number_systems, experiment_number,
+                    param_indices=mu_indices, param_type="mu", filename_suffix="_mu")
+    
+    # Plot tau parameters (assuming next 4 are tau terms)
+    tau_indices = list(range(4, 8))
+    plot_mcmc_chains(posterior_samples, warmup_samples, number_systems, experiment_number,
+                    param_indices=tau_indices, param_type="tau", filename_suffix="_tau")
+
+    # divergences = mcmc.get_extra_fields()["diverging"]
+    # acceptance_prob_est = 1.0 - jnp.mean(divergences)
+    # print("Estimated Acceptance Probability:", acceptance_prob_est)
 
     df_mcmc_time_per_N = pl.DataFrame({
         'number of systems': number_systems, 
@@ -188,12 +283,12 @@ def run_mcmc(number_systems=cs.N_SYSTEMS, experiment_number=1, folder_name="mcmc
     df_mcmc_results_per_N = parse_mcmc_summary(mcmc, number_systems)
     return df_mcmc_results_per_N, df_mcmc_time_per_N
 
-def run_full_mcmc(folder_name="mcmc_results_cpu"):
-    for experiment_number in range(1, 11):
+def run_full_mcmc():
+    for experiment_number in range(1, cs.NUMBER_EXPERIMENTS + 1):
         for N in cs.N_VALUES:
             print(f"Running MCMC for experiment = {experiment_number}, N = {N}")
-            df_mcmc_results_per_N, df_mcmc_time_per_N = run_mcmc(N, experiment_number, folder_name)
-            df_mcmc_results_per_N.write_parquet(f"simulation_results/{folder_name}/results_experiment={experiment_number}_N={N}.parquet")
-            df_mcmc_time_per_N.write_parquet(f"simulation_results/{folder_name}/times_experiment={experiment_number}_N={N}.parquet")
+            df_mcmc_results_per_N, df_mcmc_time_per_N = run_mcmc(N, experiment_number)
+            df_mcmc_results_per_N.write_parquet(f"{cs.PROBLEM}/MCMC/Results/experiment={experiment_number}_N={N}.parquet")
+            df_mcmc_time_per_N.write_parquet(f"{cs.PROBLEM}/MCMC/Runtimes/experiment={experiment_number}_N={N}.parquet")
 
 run_full_mcmc()
