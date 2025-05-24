@@ -959,5 +959,5 @@ def create_percentile_plot(target_hyperparameters, pic_name, num_experiments=cs.
 
 create_percentile_plot(
     cs.TARGET_HYPERPARAMETERS,
-    "trial"
+    "trial2"
 )

@@ -48,14 +48,40 @@ def log_likelihood_distribution_n_systems(z, y) -> float:
                                cs.OBSERVATION_NOISE))
 
 # Final distribution
-@partial(jit, static_argnums=2) 
+# @partial(jit, static_argnums=2) 
+# def log_posterior_distribution(all_parameters, y, number_systems):
+#     mu = all_parameters[:len(cs.HYPERPARAMETERS)]
+#     tau = all_parameters[len(cs.HYPERPARAMETERS):len(cs.TARGET_HYPERPARAMETERS)]
+#     z = all_parameters[len(cs.TARGET_HYPERPARAMETERS):].reshape(number_systems, len(cs.HYPERPARAMETERS))
+    
+#     log_hyperprior = log_hyperprior_distribution(mu, tau)
+#     log_population = log_population_distribution_n_systems(z, mu, tau)
+#     log_likelihood = log_likelihood_distribution_n_systems(z, y)
+    
+#     return log_hyperprior + log_population + log_likelihood
+
+@partial(jit, static_argnums=2)
 def log_posterior_distribution(all_parameters, y, number_systems):
-    mu = all_parameters[:len(cs.HYPERPARAMETERS)]
-    tau = all_parameters[len(cs.HYPERPARAMETERS):len(cs.TARGET_HYPERPARAMETERS)]
-    z = all_parameters[len(cs.TARGET_HYPERPARAMETERS):].reshape(number_systems, len(cs.HYPERPARAMETERS))
-    
+    d = len(cs.HYPERPARAMETERS)
+    # 1) hyperparameters
+    mu  = all_parameters[0    : d]
+    tau = all_parameters[d    : 2*d]
+    # 2) raw latents
+    z_raw = all_parameters[2*d:].reshape(number_systems, d)
+    # 3) map back
+    z = mu + tau * z_raw
+
+    # 4) hyperprior (negative log)
     log_hyperprior = log_hyperprior_distribution(mu, tau)
-    log_population = log_population_distribution_n_systems(z, mu, tau)
+
+    # 5) non-centered population prior (negative log):
+    #    -sum log Normal(z_raw;0,1)  +  N * sum log(tau)
+    log_population = (
+        - jnp.sum(norm.logpdf(z_raw, 0.0, 1.0))
+        + number_systems * jnp.sum(jnp.log(tau))
+    )
+
+    # 6) likelihood (still negative log)
     log_likelihood = log_likelihood_distribution_n_systems(z, y)
-    
+
     return log_hyperprior + log_population + log_likelihood
