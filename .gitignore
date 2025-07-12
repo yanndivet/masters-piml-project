@@ -6,7 +6,6 @@ obj/
 
 # Data files
 *.parquet
-*.pdf
 simulation_results/
 
 # Conda
