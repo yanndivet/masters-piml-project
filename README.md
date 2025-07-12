@@ -10,7 +10,7 @@
 
 This project looks at methods for estimating population-level parameters from indirect, noisy observations of multiple systems. Two approaches are compared:
 
-1. **Hierarchical Bayesian Models (HBMs)** uses [Markov Chain Monte Carlo](https://en.wikipedia.org/wiki/Markov_chain_Monte_Carlo) (specifically the No-U-Turn Sampler, a variant of [Hamiltonian Monte Carlo](https://en.wikipedia.org/wiki/Hamiltonian_Monte_Carlo)) to explore the posterior distribution.
+1. **[Hierarchical Bayesian Models](https://en.wikipedia.org/wiki/Bayesian_hierarchical_modeling) (HBMs)** uses [Markov Chain Monte Carlo](https://en.wikipedia.org/wiki/Markov_chain_Monte_Carlo) (specifically the No-U-Turn Sampler, a variant of [Hamiltonian Monte Carlo](https://en.wikipedia.org/wiki/Hamiltonian_Monte_Carlo)) to explore the posterior distribution.
 2. **Distribution-Matching (DM)** uses gradient descent to minimise a loss based on the Sliced-Wasserstein distance. 
 
 ---
